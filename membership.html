@@ -292,6 +292,15 @@
           <label>Next of kin — phone</label>
           <input type="tel" id="m-kin-phone">
         </div>
+
+        <div class="field">
+          <label>Create password <span class="req">*</span></label>
+          <input type="password" id="m-password" required minlength="8" autocomplete="new-password">
+        </div>
+        <div class="field">
+          <label>Confirm password <span class="req">*</span></label>
+          <input type="password" id="m-password-confirm" required minlength="8" autocomplete="new-password">
+        </div>
       </div>
 
       <div class="checkline">
@@ -302,7 +311,7 @@
       <div style="margin-top:24px;">
         <button type="submit" class="btn-primary">Submit application</button>
       </div>
-      <p id="formNote">Your email app should now be open with your application pre-filled — send it to complete your submission. If nothing opened, email the details above to <strong>membership@adagbor-association.org</strong> directly.</p>
+      <p id="formNote">Application submitted. Your account will be active once an admin approves your membership — you'll then be able to log in with the password you created above.</p>
     </form>
   </div>
 </section>
@@ -348,6 +357,22 @@
   document.getElementById('membershipForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const v = id => document.getElementById(id).value.trim();
+    const note = document.getElementById('formNote');
+
+    const password = document.getElementById('m-password').value;
+    const passwordConfirm = document.getElementById('m-password-confirm').value;
+
+    if (password.length < 8) {
+      note.textContent = 'Password must be at least 8 characters.';
+      note.style.display = 'block';
+      return;
+    }
+    if (password !== passwordConfirm) {
+      note.textContent = 'Passwords do not match.';
+      note.style.display = 'block';
+      return;
+    }
+
     const payload = {
       full_name: v('m-name'),
       gender: v('m-gender'),
@@ -364,10 +389,10 @@
       address: v('m-address'),
       next_of_kin_name: v('m-kin-name'),
       next_of_kin_phone: v('m-kin-phone'),
-      declared: document.getElementById('m-declare').checked
+      declared: document.getElementById('m-declare').checked,
+      password: password
     };
 
-    const note = document.getElementById('formNote');
     try {
       const res = await fetch(API_URL, {
         method: 'POST',
