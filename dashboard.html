@@ -207,10 +207,35 @@
 
     <div id="tab-payments" class="tab-panel">
       <div class="card">
-        <div class="dir-toolbar">
-          <span id="payCount">Loading…</span>
+        <div class="dir-toolbar" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span id="payCount">Loading…</span>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
+            <label style="font-size:0.8rem;color:#7a6f4f;display:flex;flex-direction:column;gap:4px;">
+              Contribution
+              <select id="payTypeFilter" onchange="renderMemberPayments()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;min-width:160px;">
+                <option value="">All contributions</option>
+              </select>
+            </label>
+            <label style="font-size:0.8rem;color:#7a6f4f;display:flex;flex-direction:column;gap:4px;">
+              Period
+              <select id="payPeriodMode" onchange="onPeriodModeChange()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
+                <option value="all">All time</option>
+                <option value="day">By day</option>
+                <option value="month">By month</option>
+                <option value="year">By year</option>
+              </select>
+            </label>
+            <label id="payPeriodValueWrap" style="font-size:0.8rem;color:#7a6f4f;display:none;flex-direction:column;gap:4px;">
+              <span id="payPeriodValueLabel">Date</span>
+              <input id="payPeriodValue" onchange="renderMemberPayments()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
+            </label>
+          </div>
+          <p style="margin:0;font-size:0.75rem;color:#9a8f6f;">Voluntary donations to named members are not shown here (committee only).</p>
         </div>
         <div id="payMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="payTotalsBox" style="display:none;margin-bottom:16px;"></div>
         <div id="payList"></div>
         <p class="readonly-note">Your contribution records as entered by the committee</p>
       </div>
@@ -405,43 +430,110 @@ function filterDirectory() {
 
 const CONTRIB_PAY_KEY = "adagbor_contribution_payments";
 
-async function loadAllPayments() {
-  let list = [];
+const DEFAULT_CONTRIB_TYPES = [
+  { id: "registration", name: "Registration fee", kind: "registration", builtin: true },
+  { id: "monthly", name: "Monthly due", kind: "monthly", builtin: true },
+  { id: "donation", name: "Voluntary donation to member", kind: "donation", builtin: true },
+];
+
+async function loadContributionTypes() {
+  let types = DEFAULT_CONTRIB_TYPES.slice();
   try {
-    const raw = localStorage.getItem(CONTRIB_PAY_KEY);
+    const raw = localStorage.getItem("adagbor_contribution_types");
     if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) list = parsed;
+      const custom = JSON.parse(raw);
+      if (Array.isArray(custom)) {
+        const ids = new Set(types.map(t => t.id));
+        custom.forEach(t => { if (t && t.id && !ids.has(t.id)) types.push(t); });
+      }
     }
   } catch (e) {}
   try {
-    const res = await fetch("adagbor-payments.json", { cache: "no-store" });
+    const res = await fetch("adagbor-contribution-types.json", { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data) && data.length) list = data;
+      if (Array.isArray(data) && data.length) types = data;
     }
   } catch (e) {}
-  try {
-    const res = await fetch("payments.json", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length) list = data;
-    }
-  } catch (e) {}
-  return list;
+  return types;
 }
 
-function matchesCurrentMember(p, m) {
-  if (!m) return false;
-  const phone = String(m.phone || "").trim();
-  const id = m.id != null ? String(m.id) : "";
-  const name = String(m.full_name || "").trim().toLowerCase();
-  if (id && String(p.memberId) === id) return true;
-  if (id && String(p.memberKey) === id) return true;
-  if (phone && (String(p.memberPhone || "").trim() === phone || String(p.memberKey) === phone)) return true;
-  if (name && String(p.memberName || "").trim().toLowerCase() === name) return true;
-  return false;
+
+function isDonationPayment(p) {
+  return p && (p.kind === "donation" || p.typeId === "donation" ||
+    /voluntary donation/i.test(String(p.typeName || "")));
 }
+
+function onPeriodModeChange() {
+  const mode = document.getElementById("payPeriodMode").value;
+  const wrap = document.getElementById("payPeriodValueWrap");
+  const input = document.getElementById("payPeriodValue");
+  const label = document.getElementById("payPeriodValueLabel");
+  if (mode === "all") {
+    wrap.style.display = "none";
+    renderMemberPayments();
+    return;
+  }
+  wrap.style.display = "flex";
+  if (mode === "day") {
+    label.textContent = "Day";
+    input.type = "date";
+    if (!input.value || input.value.length !== 10) input.value = new Date().toISOString().slice(0, 10);
+  } else if (mode === "month") {
+    label.textContent = "Month";
+    input.type = "month";
+    if (!input.value || input.value.length !== 7) input.value = new Date().toISOString().slice(0, 7);
+  } else if (mode === "year") {
+    label.textContent = "Year";
+    input.type = "number";
+    input.min = "2000";
+    input.max = "2100";
+    input.placeholder = "YYYY";
+    if (!input.value || input.value.length !== 4) input.value = String(new Date().getFullYear());
+  }
+  renderMemberPayments();
+}
+
+function paymentMatchesPeriod(p, mode, value) {
+  if (!mode || mode === "all" || !value) return true;
+  const date = String(p.date || "");
+  const period = String(p.period || "");
+  if (mode === "day") {
+    return date === value || date.slice(0, 10) === value;
+  }
+  if (mode === "month") {
+    return date.slice(0, 7) === value || period === value;
+  }
+  if (mode === "year") {
+    return date.slice(0, 4) === value || period.slice(0, 4) === value;
+  }
+  return true;
+}
+
+async function fillPayTypeFilter(types, payments) {
+  const sel = document.getElementById("payTypeFilter");
+  if (!sel) return;
+  const prev = sel.value;
+  const map = new Map();
+  (types || []).forEach(t => {
+    if (t.kind === "donation" || t.id === "donation") return; // members: no donation type
+    map.set(t.id || t.name, t.name || t.id);
+  });
+  (payments || []).forEach(p => {
+    if (isDonationPayment(p)) return;
+    const id = p.typeId || p.typeName;
+    if (id && !map.has(id)) map.set(id, p.typeName || p.typeId);
+  });
+  const opts = ['<option value="">All contributions</option>'];
+  [...map.entries()].sort((a, b) => String(a[1]).localeCompare(String(b[1]))).forEach(([id, name]) => {
+    opts.push('<option value="' + escapeHtml(id) + '">' + escapeHtml(name) + '</option>');
+  });
+  sel.innerHTML = opts.join("");
+  if (prev && [...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+let cachedMemberPayments = [];
+let cachedContribTypes = [];
 
 async function loadPaymentHistory() {
   const countEl = document.getElementById("payCount");
@@ -451,6 +543,8 @@ async function loadPaymentHistory() {
   countEl.textContent = "Loading…";
   msg.style.display = "none";
   listEl.innerHTML = "";
+  const totalsBox = document.getElementById("payTotalsBox");
+  if (totalsBox) { totalsBox.style.display = "none"; totalsBox.innerHTML = ""; }
 
   if (!currentMember) {
     msg.style.display = "block";
@@ -460,17 +554,49 @@ async function loadPaymentHistory() {
   }
 
   const all = await loadAllPayments();
-  const mine = all
+  cachedContribTypes = await loadContributionTypes();
+  // Exclude voluntary donations to members entirely from member view
+  cachedMemberPayments = all
     .filter(p => matchesCurrentMember(p, currentMember))
+    .filter(p => !isDonationPayment(p))
     .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+  await fillPayTypeFilter(cachedContribTypes, cachedMemberPayments);
+  renderMemberPayments();
+}
+
+function renderMemberPayments() {
+  const countEl = document.getElementById("payCount");
+  const msg = document.getElementById("payMsg");
+  const listEl = document.getElementById("payList");
+  const totalsBox = document.getElementById("payTotalsBox");
+  if (!countEl || !listEl) return;
+
+  const typeFilter = (document.getElementById("payTypeFilter") && document.getElementById("payTypeFilter").value) || "";
+  const mode = (document.getElementById("payPeriodMode") && document.getElementById("payPeriodMode").value) || "all";
+  const periodVal = (document.getElementById("payPeriodValue") && document.getElementById("payPeriodValue").value) || "";
+
+  let mine = cachedMemberPayments.filter(p => !isDonationPayment(p));
+  if (typeFilter) {
+    mine = mine.filter(p =>
+      String(p.typeId || "") === typeFilter ||
+      String(p.typeName || "") === typeFilter
+    );
+  }
+  mine = mine.filter(p => paymentMatchesPeriod(p, mode, periodVal));
 
   countEl.textContent = mine.length + " payment(s)";
 
   if (!mine.length) {
+    listEl.innerHTML = "";
     msg.style.display = "block";
-    msg.textContent = "No contribution records yet for your membership.";
+    msg.textContent = cachedMemberPayments.length
+      ? "No payments match this contribution or period."
+      : "No contribution records yet for your membership.";
+    if (totalsBox) { totalsBox.style.display = "none"; totalsBox.innerHTML = ""; }
     return;
   }
+  msg.style.display = "none";
 
   const groups = {};
   mine.forEach(p => {
@@ -483,7 +609,6 @@ async function loadPaymentHistory() {
     const rows = groups[typeName].map(p => {
       let extra = "";
       if (p.kind === "monthly" && p.period) extra = "Period: " + escapeHtml(p.period);
-      if (p.kind === "donation" && p.beneficiaryName) extra = "To: " + escapeHtml(p.beneficiaryName);
       if (p.note) extra = (extra ? extra + " · " : "") + escapeHtml(p.note);
       return '<div class="pay-row"><div><div class="type">' + escapeHtml(p.date || "") +
         '</div><div class="meta">' + (extra || "—") +
@@ -493,6 +618,29 @@ async function loadPaymentHistory() {
     }).join("");
     return '<div class="pay-group-title">' + escapeHtml(typeName) + '</div>' + rows;
   }).join("");
+
+  // Totals for filtered view (already excludes donations)
+  if (totalsBox) {
+    const byType = {};
+    mine.forEach(p => {
+      const name = p.typeName || p.typeId || "Other";
+      byType[name] = (byType[name] || 0) + (Number(p.amount) || 0);
+    });
+    const grand = mine.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    totalsBox.style.display = "block";
+    totalsBox.innerHTML =
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:8px;">' +
+      Object.keys(byType).sort().map(name =>
+        '<div style="background:#f5f0e1;border:1px solid #d8cfae;border-radius:6px;padding:10px 12px;">' +
+        '<div style="font-size:0.75rem;color:#7a6f4f;">' + escapeHtml(name) + '</div>' +
+        '<div style="font-weight:bold;color:#4a3f22;margin-top:4px;">' +
+        byType[name].toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
+        '</div></div>'
+      ).join("") +
+      '</div>' +
+      '<div style="font-size:0.9rem;color:#5a4a1f;font-weight:bold;">Total for selection: ' +
+      grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>';
+  }
 }
 
 

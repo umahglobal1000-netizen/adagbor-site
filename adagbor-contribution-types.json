@@ -1,0 +1,20 @@
+[
+  {
+    "id": "registration",
+    "name": "Registration fee",
+    "kind": "registration",
+    "builtin": true
+  },
+  {
+    "id": "monthly",
+    "name": "Monthly due",
+    "kind": "monthly",
+    "builtin": true
+  },
+  {
+    "id": "donation",
+    "name": "Voluntary donation to member",
+    "kind": "donation",
+    "builtin": true
+  }
+]
