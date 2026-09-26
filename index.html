@@ -219,7 +219,8 @@
       const email = (e.email || '').trim();
       const card = document.createElement('div');
       card.className = 'exec-card';
-      card.innerHTML = '<div class="role">' + escapeHtml(e.role || 'Officer') + '</div>' +
+      card.innerHTML = (e.photo ? '<img src="' + escapeHtml(e.photo) + '" alt="" style="width:64px;height:64px;border-radius:50%;object-fit:cover;margin-bottom:8px;">' : '') +
+        '<div class="role">' + escapeHtml(e.role || 'Officer') + '</div>' +
         '<h3>' + escapeHtml(e.name || '—') + '</h3>' +
         '<div class="branch">' + escapeHtml(e.branch || '') + '</div>' +
         (phone ? '<div class="line">Phone: <a href="tel:' + escapeHtml(phone) + '">' + escapeHtml(phone) + '</a></div>' : '') +
