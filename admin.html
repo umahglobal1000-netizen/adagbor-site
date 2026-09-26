@@ -187,16 +187,57 @@
         <h2>Contribution types</h2>
         <p class="hint">Built-in types plus <strong>other contributions</strong> you create and tag. The same list appears in the contribution drop-down for admin (recording) and members (payment history filter). Export types JSON with the site so members see your tags.</p>
         <div id="typeChips"></div>
-        <div class="form-row" style="margin-top:14px;grid-template-columns:1fr auto auto;align-items:end;">
+        <div class="form-row" style="margin-top:14px;grid-template-columns:1fr auto auto auto auto;align-items:end;">
           <div>
             <label for="newTypeName">Other contribution (tag / name)</label>
             <input type="text" id="newTypeName" placeholder="e.g. Building levy, Welfare levy, Funeral support">
+          </div>
+          <div>
+            <label for="newTypeFeeKind">Fee type</label>
+            <select id="newTypeFeeKind" onchange="onNewTypeFeeKindChange()">
+              <option value="voluntary">Voluntary</option>
+              <option value="fixed">Fixed amount</option>
+            </select>
+          </div>
+          <div id="newTypeAmountWrap" style="display:none;">
+            <label for="newTypeAmount">Required amount (₦)</label>
+            <input type="number" id="newTypeAmount" min="0" step="0.01" placeholder="0.00">
           </div>
           <button type="button" class="actionBtn" onclick="addContributionType()">Add &amp; tag</button>
           <button type="button" class="actionBtn secondary" onclick="exportTypesJson()">Export types JSON</button>
         </div>
       </div>
 
+
+      <div class="panel" id="memberFeesPanel">
+        <h2>Members — fees paid</h2>
+        <p class="hint">Fixed contributions (registration, monthly dues, or any fixed type you tag above) show paid vs. required for the period below. Voluntary contributions show the total given, with no fixed target.</p>
+        <div class="bulk-bar" style="margin-bottom:16px;">
+          <div class="field">
+            <label>Period</label>
+            <select id="feePeriodMode" onchange="onFeePeriodModeChange()">
+              <option value="all">All time</option>
+              <option value="month">By month</option>
+              <option value="year">By year</option>
+            </select>
+          </div>
+          <div class="field" id="feePeriodValueWrap" style="display:none;">
+            <label id="feePeriodValueLabel">Month</label>
+            <input id="feePeriodValue" type="month" onchange="renderMemberFeesTable()">
+          </div>
+          <div class="field">
+            <label>Search</label>
+            <input type="search" id="feeSearch" placeholder="Member or branch…" oninput="renderMemberFeesTable()" style="min-width:160px;">
+          </div>
+        </div>
+        <div class="tableScroll">
+          <table>
+            <thead id="memberFeesHead"></thead>
+            <tbody id="memberFeesBody"></tbody>
+          </table>
+        </div>
+        <p style="margin-top:10px;font-size:12px;color:#666;">✓ = met the required amount for a fixed fee within the selected period · Approved members only.</p>
+      </div>
 
       <div class="panel" id="totalsPanel">
         <h2>Total payments</h2>
@@ -579,11 +620,12 @@ const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
 const EXEC_KEY = "adagbor_executives";
 const CONTRIB_TYPES_KEY = "adagbor_contribution_types";
 const CONTRIB_PAY_KEY = "adagbor_contribution_payments";
+const CONTRIB_TYPE_OVERRIDES_KEY = "adagbor_contrib_type_overrides";
 
 const DEFAULT_TYPES = [
-  { id: "registration", name: "Registration fee", kind: "registration", builtin: true },
-  { id: "monthly", name: "Monthly due", kind: "monthly", builtin: true },
-  { id: "donation", name: "Voluntary donation to member", kind: "donation", builtin: true },
+  { id: "registration", name: "Registration fee", kind: "registration", builtin: true, feeKind: "fixed", requiredAmount: 5000 },
+  { id: "monthly", name: "Monthly due", kind: "monthly", builtin: true, feeKind: "fixed", requiredAmount: 1000 },
+  { id: "donation", name: "Voluntary donation to member", kind: "donation", builtin: true, feeKind: "voluntary", requiredAmount: 0 },
 ];
 
 let adminKey = "";
@@ -920,17 +962,56 @@ async function updateStatus(id, status) {
 
 /* ---- Contributions ---- */
 
+function getTypeOverrides() {
+  try {
+    const raw = localStorage.getItem(CONTRIB_TYPE_OVERRIDES_KEY);
+    const obj = raw ? JSON.parse(raw) : {};
+    return (obj && typeof obj === "object" && !Array.isArray(obj)) ? obj : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveTypeOverrides(map) {
+  localStorage.setItem(CONTRIB_TYPE_OVERRIDES_KEY, JSON.stringify(map));
+  if (window.AdagborStore) AdagborStore.save("contribution_types", getTypes(), adminKey);
+}
+
 function getTypes() {
+  let list;
   try {
     const raw = localStorage.getItem(CONTRIB_TYPES_KEY);
     let custom = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(custom)) custom = [];
     const ids = new Set(DEFAULT_TYPES.map(t => t.id));
     custom = custom.filter(t => t && t.id && !ids.has(t.id));
-    return DEFAULT_TYPES.concat(custom);
+    list = DEFAULT_TYPES.concat(custom);
   } catch (e) {
-    return DEFAULT_TYPES.slice();
+    list = DEFAULT_TYPES.slice();
   }
+  const overrides = getTypeOverrides();
+  return list.map(t => {
+    const base = Object.assign({ feeKind: "voluntary", requiredAmount: 0 }, t);
+    const ov = overrides[t.id];
+    return ov ? Object.assign({}, base, ov) : base;
+  });
+}
+
+function setTypeFeeKind(id, feeKind) {
+  const overrides = getTypeOverrides();
+  overrides[id] = Object.assign({}, overrides[id], { feeKind: feeKind === "fixed" ? "fixed" : "voluntary" });
+  saveTypeOverrides(overrides);
+  renderTypeChips();
+  fillTotalFilters();
+  renderMemberFeesTable();
+}
+
+function setTypeAmount(id, value) {
+  const amt = parseFloat(value);
+  const overrides = getTypeOverrides();
+  overrides[id] = Object.assign({}, overrides[id], { feeKind: "fixed", requiredAmount: amt > 0 ? amt : 0 });
+  saveTypeOverrides(overrides);
+  renderMemberFeesTable();
 }
 
 function saveCustomTypes(customOnly) {
@@ -1089,6 +1170,98 @@ function renderPaymentTotals() {
 }
 
 
+function onFeePeriodModeChange() {
+  const mode = document.getElementById("feePeriodMode").value;
+  const wrap = document.getElementById("feePeriodValueWrap");
+  const label = document.getElementById("feePeriodValueLabel");
+  const input = document.getElementById("feePeriodValue");
+  if (mode === "all") {
+    wrap.style.display = "none";
+  } else {
+    wrap.style.display = "flex";
+    if (mode === "month") {
+      label.textContent = "Month";
+      input.type = "month";
+    } else {
+      label.textContent = "Year";
+      input.type = "number";
+      input.placeholder = String(new Date().getFullYear());
+    }
+    input.value = "";
+  }
+  renderMemberFeesTable();
+}
+
+function paymentMatchesFeePeriod(p, mode, value) {
+  if (mode === "all" || !value) return true;
+  const raw = (p.kind === "monthly" && p.period) ? p.period : (p.date || "");
+  if (mode === "month") return String(raw).slice(0, 7) === value;
+  if (mode === "year") return String(raw).slice(0, 4) === String(value);
+  return true;
+}
+
+function renderMemberFeesTable() {
+  const head = document.getElementById("memberFeesHead");
+  const body = document.getElementById("memberFeesBody");
+  if (!head || !body) return;
+
+  const types = getTypes();
+  const mode = (document.getElementById("feePeriodMode") || {}).value || "all";
+  const value = (document.getElementById("feePeriodValue") || {}).value || "";
+  const q = ((document.getElementById("feeSearch") || {}).value || "").trim().toLowerCase();
+  const payments = getPayments().filter(p => paymentMatchesFeePeriod(p, mode, value));
+
+  head.innerHTML = "<tr><th>#</th><th>Photo</th><th>Member</th><th>Branch</th>" +
+    types.map(t => {
+      const tag = t.feeKind === "fixed"
+        ? ` (₦${Number(t.requiredAmount || 0).toLocaleString()})`
+        : " (voluntary)";
+      return `<th>${escapeHtml(t.name)}${tag}</th>`;
+    }).join("") +
+    "<th>Total paid</th></tr>";
+
+  let list = allMembers.filter(m => (m.status || "").toLowerCase() === "approved");
+  if (q) {
+    list = list.filter(m =>
+      (m.full_name || "").toLowerCase().includes(q) ||
+      (m.branch || "").toLowerCase().includes(q)
+    );
+  }
+  list = list.slice().sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || ""), undefined, { sensitivity: "base" }));
+
+  if (!list.length) {
+    body.innerHTML = `<tr><td colspan="${types.length + 5}" style="color:#888;">No members to show.</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = list.map((m, i) => {
+    const key = memberKey(m);
+    const mine = payments.filter(p => String(p.memberKey || "") === key);
+    let total = 0;
+    const cells = types.map(t => {
+      const sum = mine
+        .filter(p => (p.typeId || "") === t.id)
+        .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      total += sum;
+      if (t.feeKind === "fixed" && t.requiredAmount) {
+        const met = sum >= Number(t.requiredAmount);
+        const color = met ? "#1e4d2b" : (sum > 0 ? "#856404" : "#b00020");
+        const label = met ? "✓" : (sum > 0 ? "Partial" : "Unpaid");
+        return `<td style="color:${color};font-weight:600;">${label}${sum ? " ₦" + sum.toLocaleString() : ""}</td>`;
+      }
+      return `<td>${sum ? "₦" + sum.toLocaleString() : "—"}</td>`;
+    }).join("");
+    return `<tr>
+      <td>${i + 1}</td>
+      <td>${memberPhoto(m)}</td>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.branch || "")}</td>
+      ${cells}
+      <td style="font-weight:700;color:#1e4d2b;">₦${total.toLocaleString()}</td>
+    </tr>`;
+  }).join("");
+}
+
 function initContributionsTab() {
   renderTypeChips();
   fillPayTypeSelect();
@@ -1101,6 +1274,7 @@ function initContributionsTab() {
   renderPaymentGrid();
   renderPayHistory();
   renderPaymentTotals();
+  renderMemberFeesTable();
 }
 
 function renderTypeChips() {
@@ -1110,28 +1284,51 @@ function renderTypeChips() {
       ? ""
       : `<button type="button" title="Remove" onclick="removeContributionType('${escapeHtml(t.id)}')">×</button>`;
     const tag = t.builtin ? "" : ' <em style="opacity:.75">(other)</em>';
-    return `<span class="chip">${escapeHtml(t.name)}${tag}${del}</span>`;
+    const isFixed = t.feeKind === "fixed";
+    return `<span class="chip" style="display:inline-flex;align-items:center;gap:6px;">
+      ${escapeHtml(t.name)}${tag}
+      <select onchange="setTypeFeeKind('${escapeHtml(t.id)}', this.value)" style="font-size:11px;padding:2px 4px;border-radius:4px;">
+        <option value="voluntary" ${!isFixed ? "selected" : ""}>Voluntary</option>
+        <option value="fixed" ${isFixed ? "selected" : ""}>Fixed ₦</option>
+      </select>
+      ${isFixed ? `<input type="number" min="0" step="0.01" value="${Number(t.requiredAmount || 0)}" style="width:80px;font-size:11px;padding:2px 4px;border-radius:4px;" onchange="setTypeAmount('${escapeHtml(t.id)}', this.value)">` : ""}
+      ${del}
+    </span>`;
   }).join("");
+}
+
+function onNewTypeFeeKindChange() {
+  const wrap = document.getElementById("newTypeAmountWrap");
+  wrap.style.display = document.getElementById("newTypeFeeKind").value === "fixed" ? "block" : "none";
 }
 
 function addContributionType() {
   const name = document.getElementById("newTypeName").value.trim();
   if (!name) return;
+  const feeKind = document.getElementById("newTypeFeeKind").value === "fixed" ? "fixed" : "voluntary";
+  const requiredAmount = feeKind === "fixed" ? (parseFloat(document.getElementById("newTypeAmount").value) || 0) : 0;
   const id = "custom_" + Date.now();
   const custom = getTypes().filter(t => !t.builtin);
-  custom.push({ id, name, kind: "custom", builtin: false });
+  custom.push({ id, name, kind: "custom", builtin: false, feeKind, requiredAmount });
   saveCustomTypes(custom);
   document.getElementById("newTypeName").value = "";
+  document.getElementById("newTypeAmount").value = "";
   renderTypeChips();
   fillPayTypeSelect();
+  fillTotalFilters();
+  renderMemberFeesTable();
   setContribMsg("Contribution type added.");
 }
 
 function removeContributionType(id) {
   if (!confirm("Remove this contribution type?")) return;
   saveCustomTypes(getTypes().filter(t => !t.builtin && t.id !== id));
+  const overrides = getTypeOverrides();
+  if (overrides[id]) { delete overrides[id]; saveTypeOverrides(overrides); }
   renderTypeChips();
   fillPayTypeSelect();
+  fillTotalFilters();
+  renderMemberFeesTable();
 }
 
 function fillPayTypeSelect() {
@@ -1225,6 +1422,7 @@ function addPaymentRecords(entries) {
   setPayments(list);
   renderPayHistory();
   renderPaymentTotals();
+  renderMemberFeesTable();
 }
 
 function saveRowPayment(key) {
@@ -1335,6 +1533,7 @@ function deletePayment(id) {
   setPayments(getPayments().filter(p => p.id !== id));
   renderPayHistory();
   renderPaymentTotals();
+  renderMemberFeesTable();
   setContribMsg("Payment deleted.");
 }
 
