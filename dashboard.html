@@ -367,6 +367,19 @@ function escapeHtml(str) {
   }[c]));
 }
 
+function memberKey(m) {
+  return String(m.id != null ? m.id : (m.phone || m.email || m.full_name || "")).trim();
+}
+
+function matchesCurrentMember(record, member) {
+  if (!record || !member) return false;
+  const key = memberKey(member);
+  if (record.memberKey != null && String(record.memberKey).trim() === key) return true;
+  if (record.memberId != null && member.id != null && String(record.memberId) === String(member.id)) return true;
+  if (record.memberPhone && member.phone && String(record.memberPhone).trim() === String(member.phone).trim()) return true;
+  return false;
+}
+
 function fileToResizedDataUrl(file, maxSize, quality) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
