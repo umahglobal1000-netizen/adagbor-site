@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Home — Adagbor Descendant Association</title>
+<title>Contact — Adagbor Descendant Association</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -91,28 +91,43 @@
 
 <section class="hero">
   <div class="wrap">
-    <div class="hero-entry"><span class="dot"></span> Adagbor Descendant Association</div>
-    <h1>One <em>ancestral home,</em> many branches.</h1>
-    <p class="lede">Descendants of Adagbor — rooted in Ugbedu, Kogi State — gathered across Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji and beyond. This association keeps the family connected, on record, and looking after one another.</p>
-    <div class="hero-actions">
-      <a class="btn-primary" href="membership.html">Join the register</a>
-      <a class="btn-ghost" href="about.html">Our story</a>
-    </div>
+    <div class="hero-entry"><span class="dot"></span> Get in touch</div>
+    <h1>Speak with the <em>committee.</em></h1>
+    <p class="lede">Questions about membership, events, or the fund — send a message and a committee member will respond.</p>
   </div>
 </section>
 <section class="section">
-  <div class="wrap">
-    <h2>The branches</h2>
-    <p class="sub">Every branch traces back to the same ancestral home.</p>
-    <div class="card-grid">
-      <div class="card"><h3>Ugbedu</h3><p>The ancestral home.</p></div>
-      <div class="card"><h3>Itobe</h3><p>One of the settled branches.</p></div>
-      <div class="card"><h3>Ajaokuta</h3><p>One of the settled branches.</p></div>
-      <div class="card"><h3>Ukpo</h3><p>One of the settled branches.</p></div>
-      <div class="card"><h3>Allo-Dodogbaji</h3><p>One of the settled branches.</p></div>
+  <div class="wrap contact-grid">
+    <div>
+      <h2>Contact form</h2>
+      <p class="sub">We aim to reply within a few working days.</p>
+      <form id="contactForm">
+        <div class="field"><label for="c-name">Your name</label><input type="text" id="c-name" required></div>
+        <div class="field"><label for="c-email">Email or phone</label><input type="text" id="c-email" required></div>
+        <div class="field"><label for="c-branch">Branch (optional)</label>
+          <select id="c-branch"><option value="">Select</option><option>Ugbedu</option><option>Itobe</option><option>Ajaokuta</option><option>Ukpo</option><option>Allo-Dodogbaji</option><option>Other</option></select>
+        </div>
+        <div class="field"><label for="c-msg">Message</label><textarea id="c-msg" required></textarea></div>
+        <button type="submit" class="btn-primary">Send message</button>
+        <p id="formNote">Thank you. Your message has been noted — the committee will be in touch.</p>
+      </form>
+    </div>
+    <div>
+      <h2>Direct channels</h2>
+      <p class="sub">Prefer email or your branch representative.</p>
+      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Membership</h3><p>membership@adagbor-association.org</p></div></div>
+      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>General enquiries</h3><p>info@adagbor-association.org</p></div></div>
+      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Ancestral home</h3><p>Ugbedu, Kogi State, Nigeria</p></div></div>
     </div>
   </div>
 </section>
+<script>
+  document.getElementById('contactForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    document.getElementById('formNote').style.display = 'block';
+    this.reset();
+  });
+</script>
 
 
 <footer>

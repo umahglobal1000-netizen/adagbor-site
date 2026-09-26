@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Member Login — Adagbor Descendant Association</title>
+<title>Login — Adagbor Descendant Association</title>
 <style>
   body {
     font-family: Georgia, 'Times New Roman', serif;
@@ -23,73 +23,67 @@
     width: 100%;
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
-  h1 {
-    font-size: 1.4rem;
-    margin-bottom: 4px;
-    color: #4a3f22;
-  }
-  p.sub {
-    color: #7a6f4f;
-    margin-top: 0;
-    margin-bottom: 24px;
-    font-size: 0.95rem;
-  }
-  label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: bold;
-  }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; color: #4a3f22; }
+  p.sub { color: #7a6f4f; margin-top: 0; margin-bottom: 24px; font-size: 0.95rem; }
+  label { display: block; margin-bottom: 6px; font-weight: bold; }
   input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 18px;
-    border: 1px solid #c9bd93;
-    border-radius: 4px;
-    box-sizing: border-box;
-    font-size: 1rem;
+    width: 100%; padding: 10px; margin-bottom: 18px;
+    border: 1px solid #c9bd93; border-radius: 4px;
+    box-sizing: border-box; font-size: 1rem;
   }
   button {
-    width: 100%;
-    padding: 12px;
-    background: #5a4a1f;
-    color: #fff;
-    border: none;
-    border-radius: 4px;
-    font-size: 1rem;
-    cursor: pointer;
+    width: 100%; padding: 12px; background: #5a4a1f; color: #fff;
+    border: none; border-radius: 4px; font-size: 1rem; cursor: pointer;
   }
   button:hover { background: #443709; }
-  #message {
-    margin-top: 16px;
-    font-size: 0.9rem;
-    text-align: center;
-  }
+  #message { margin-top: 16px; font-size: 0.9rem; text-align: center; }
   .error { color: #a33; }
   .success { color: #2a7a2a; }
+  .hint {
+    margin-top: 20px; padding-top: 16px; border-top: 1px solid #eee6d0;
+    font-size: 0.85rem; color: #7a6f4f; text-align: center; line-height: 1.4;
+  }
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Member Login</h1>
+    <h1>Login</h1>
     <p class="sub">Ancestral home: Ugbedu, Kogi State</p>
-
     <form id="loginForm">
       <label for="identifier">Email or phone number</label>
-      <input type="text" id="identifier" required autocomplete="username">
-
+      <input type="text" id="identifier" autocomplete="username" placeholder="Members: email or phone">
       <label for="password">Password</label>
-      <input type="password" id="password" required autocomplete="current-password">
-
+      <input type="password" id="password" required autocomplete="current-password" placeholder="Password or admin key">
       <button type="submit">Log in</button>
     </form>
-
     <p style="margin-top:16px;font-size:0.9rem;text-align:center"><a href="forgot-password.html" style="color:#5a4a1f">Forgot password?</a></p>
-
     <div id="message"></div>
+    <p class="hint">Members use email/phone and password.<br>Committee: enter the admin key as the password.</p>
   </div>
-
 <script>
 const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+
+async function tryMemberLogin(identifier, password) {
+  if (!identifier) return null;
+  const res = await fetch(`${API_BASE}/api/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ identifier, password }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok) return { ok: true, data };
+  return { ok: false, error: data.error || "Login failed." };
+}
+
+async function tryAdminLogin(key) {
+  if (!key) return null;
+  const res = await fetch(`${API_BASE}/api/admin/members`, {
+    headers: { "X-Admin-Key": key },
+  });
+  if (res.status === 401 || !res.ok) return { ok: false };
+  return { ok: true };
+}
 
 document.getElementById("loginForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -98,25 +92,28 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   const msg = document.getElementById("message");
   msg.textContent = "Logging in...";
   msg.className = "";
-
   try {
-    const res = await fetch(`${API_BASE}/api/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ identifier, password }),
-    });
-    const data = await res.json();
-
-    if (!res.ok) {
-      msg.textContent = data.error || "Login failed.";
-      msg.className = "error";
+    if (identifier) {
+      const member = await tryMemberLogin(identifier, password);
+      if (member && member.ok) {
+        msg.textContent = "Success! Opening your membership…";
+        msg.className = "success";
+        window.location.href = "dashboard.html";
+        return;
+      }
+    }
+    const admin = await tryAdminLogin(password);
+    if (admin && admin.ok) {
+      sessionStorage.setItem("adminKey", password);
+      msg.textContent = "Success! Opening admin dashboard…";
+      msg.className = "success";
+      window.location.href = "admin.html";
       return;
     }
-
-    msg.textContent = "Success! Redirecting...";
-    msg.className = "success";
-    window.location.href = "dashboard.html";
+    msg.textContent = identifier
+      ? "Invalid credentials. Check your email/phone and password, or use the admin key if you are on the committee."
+      : "Invalid admin key.";
+    msg.className = "error";
   } catch (err) {
     msg.textContent = "Network error. Please try again.";
     msg.className = "error";
