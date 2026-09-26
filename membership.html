@@ -167,6 +167,17 @@
   textarea{resize:vertical; min-height:80px;}
   .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px 20px;}
   .form-grid .full{grid-column:1/-1;}
+
+  .photo-field{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;}
+  .photo-preview{
+    width:96px;height:96px;border-radius:50%;object-fit:cover;
+    border:2px solid var(--rule);background:var(--paper-dim);display:none;
+  }
+  .photo-preview.show{display:block;}
+  .photo-input-wrap{flex:1;min-width:180px;}
+  .photo-input-wrap input[type=file]{font-size:13px;padding:8px 0;}
+  .photo-hint{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+
   .checkline{display:flex; align-items:flex-start; gap:10px; font-size:13.5px; color:var(--ink-soft); margin-top:6px;}
   .checkline input{margin-top:3px;}
   button.btn-primary{
@@ -217,6 +228,18 @@
           <label>Full name <span class="req">*</span></label>
           <input type="text" id="m-name" required>
         </div>
+
+        <div class="field full">
+          <label>Passport photograph <span class="req">*</span></label>
+          <div class="photo-field">
+            <img id="m-photo-preview" class="photo-preview" alt="Photo preview">
+            <div class="photo-input-wrap">
+              <input type="file" id="m-photo" accept="image/jpeg,image/png,image/webp" required>
+              <p class="photo-hint">Clear face photo. JPEG or PNG, under 5&nbsp;MB. It will appear on your membership record.</p>
+            </div>
+          </div>
+        </div>
+
 
         <div class="field">
           <label>Gender <span class="req">*</span></label>
@@ -354,6 +377,50 @@
     }
   })();
 
+  
+  // Resize/compress photo to JPEG data URL (max edge 480px)
+  function readPhotoAsDataUrl(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve('');
+      if (!file.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));
+      if (file.size > 5 * 1024 * 1024) return reject(new Error('Photo must be under 5 MB.'));
+      const reader = new FileReader();
+      reader.onerror = () => reject(new Error('Could not read photo.'));
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Invalid image.'));
+        img.onload = () => {
+          const max = 480;
+          let w = img.width, h = img.height;
+          if (w > max || h > max) {
+            if (w > h) { h = Math.round(h * max / w); w = max; }
+            else { w = Math.round(w * max / h); h = max; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL('image/jpeg', 0.72));
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const photoInput = document.getElementById('m-photo');
+  const photoPreview = document.getElementById('m-photo-preview');
+  if (photoInput) {
+    photoInput.addEventListener('change', () => {
+      const f = photoInput.files && photoInput.files[0];
+      if (!f) { photoPreview.classList.remove('show'); photoPreview.removeAttribute('src'); return; }
+      const url = URL.createObjectURL(f);
+      photoPreview.src = url;
+      photoPreview.classList.add('show');
+    });
+  }
+
+
   document.getElementById('membershipForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const v = id => document.getElementById(id).value.trim();
@@ -369,6 +436,24 @@
     }
     if (password !== passwordConfirm) {
       note.textContent = 'Passwords do not match.';
+      note.style.display = 'block';
+      return;
+    }
+
+    const photoFile = document.getElementById('m-photo').files && document.getElementById('m-photo').files[0];
+    if (!photoFile) {
+      note.textContent = 'Please upload a passport photograph.';
+      note.style.display = 'block';
+      return;
+    }
+
+    let photoData = '';
+    try {
+      note.textContent = 'Preparing photo…';
+      note.style.display = 'block';
+      photoData = await readPhotoAsDataUrl(photoFile);
+    } catch (err) {
+      note.textContent = err.message || 'Could not process photo.';
       note.style.display = 'block';
       return;
     }
@@ -390,7 +475,8 @@
       next_of_kin_name: v('m-kin-name'),
       next_of_kin_phone: v('m-kin-phone'),
       declared: document.getElementById('m-declare').checked,
-      password: password
+      password: password,
+      photo: photoData
     };
 
     try {

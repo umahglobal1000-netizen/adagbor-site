@@ -30,31 +30,22 @@
   .hero{padding:48px 0 40px;border-bottom:1px solid var(--rule);}
   .hero-entry{font-size:13px;color:var(--ink-soft);margin-bottom:18px;display:flex;gap:10px;align-items:center;}
   .hero-entry .dot{width:5px;height:5px;border-radius:50%;background:var(--brass);}
-  .hero h1{font-size:36px;line-height:1.15;max-width:16ch;}
+  .hero h1{font-size:36px;line-height:1.15;max-width:18ch;}
   .hero h1 em{font-style:italic;color:var(--green);}
   .hero p.lede{font-size:16px;color:var(--ink-soft);max-width:60ch;margin-top:16px;}
   .section{padding:52px 0;border-bottom:1px solid var(--rule);}
   .section h2{font-size:26px;margin-bottom:8px;}
   .section .sub{color:var(--ink-soft);font-size:14px;margin:0 0 28px;max-width:50ch;}
-  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
-  .card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:22px;}
-  .card h3{font-size:17px;margin-bottom:8px;}
-  .card p{margin:0;font-size:13.5px;color:var(--ink-soft);}
-  .card .meta{font-size:12px;color:var(--brass);margin-bottom:10px;}
-  .ledger-row{display:grid;grid-template-columns:56px 1fr;gap:20px;align-items:start;padding:20px 0;border-top:1px solid var(--rule);}
-  .ledger-row:last-child{border-bottom:1px solid var(--rule);}
-  .ledger-num{font-family:'Fraunces',serif;font-size:20px;color:var(--brass);}
-  .ledger-body h3{font-size:17px;font-weight:500;}
-  .ledger-body p{margin:4px 0 0;font-size:13.5px;color:var(--ink-soft);max-width:52ch;}
-  form .field{margin-bottom:16px;}
-  form label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
-  form input,form textarea,form select{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);}
-  form textarea{min-height:110px;resize:vertical;}
-  .btn-primary{display:inline-block;padding:12px 26px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--green);background:var(--green);color:var(--paper);cursor:pointer;font-family:inherit;text-decoration:none;}
-  .btn-ghost{display:inline-block;padding:12px 22px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--ink-soft);background:transparent;color:var(--ink);text-decoration:none;}
-  .hero-actions{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap;}
-  #formNote{display:none;margin-top:14px;font-size:14px;color:var(--green);}
-  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
+  .exec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
+  .exec-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:22px;}
+  .exec-card .role{font-size:12px;color:var(--brass);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;}
+  .exec-card h3{font-size:18px;margin-bottom:4px;}
+  .exec-card .branch{font-size:13px;color:var(--ink-soft);margin-bottom:14px;}
+  .exec-card .line{font-size:14px;margin:6px 0;color:var(--ink);}
+  .exec-card .line a{color:var(--green);text-decoration:none;border-bottom:1px solid transparent;}
+  .exec-card .line a:hover{border-bottom-color:var(--green);}
+  .exec-card .muted{color:var(--ink-soft);font-size:13px;}
+  #emptyNote{display:none;padding:24px;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-soft);font-size:14px;}
   footer{padding:28px 0;font-size:13px;color:var(--ink-soft);}
   @media (max-width:720px){
     .nav-toggle{display:block;}
@@ -62,12 +53,10 @@
     nav.open{max-height:360px;}
     nav a{display:block;padding:14px 24px;border-top:1px solid var(--rule);border-bottom:none;}
     .hero h1{font-size:30px;}
-    .contact-grid{grid-template-columns:1fr;}
   }
 </style>
 </head>
 <body>
-
 <header>
   <div class="wrap header-row">
     <div class="brand-row">
@@ -88,47 +77,22 @@
   </div>
 </header>
 
-
 <section class="hero">
   <div class="wrap">
-    <div class="hero-entry"><span class="dot"></span> Get in touch</div>
-    <h1>Speak with the <em>committee.</em></h1>
-    <p class="lede">Questions about membership, events, or the fund — send a message and a committee member will respond.</p>
+    <div class="hero-entry"><span class="dot"></span> Executive contacts</div>
+    <h1>Reach the <em>committee.</em></h1>
+    <p class="lede">Contact details for the current executive officers. For membership applications, use the Membership page; officers are listed here for direct reach.</p>
   </div>
 </section>
-<section class="section">
-  <div class="wrap contact-grid">
-    <div>
-      <h2>Contact form</h2>
-      <p class="sub">We aim to reply within a few working days.</p>
-      <form id="contactForm">
-        <div class="field"><label for="c-name">Your name</label><input type="text" id="c-name" required></div>
-        <div class="field"><label for="c-email">Email or phone</label><input type="text" id="c-email" required></div>
-        <div class="field"><label for="c-branch">Branch (optional)</label>
-          <select id="c-branch"><option value="">Select</option><option>Ugbedu</option><option>Itobe</option><option>Ajaokuta</option><option>Ukpo</option><option>Allo-Dodogbaji</option><option>Other</option></select>
-        </div>
-        <div class="field"><label for="c-msg">Message</label><textarea id="c-msg" required></textarea></div>
-        <button type="submit" class="btn-primary">Send message</button>
-        <p id="formNote">Thank you. Your message has been noted — the committee will be in touch.</p>
-      </form>
-    </div>
-    <div>
-      <h2>Direct channels</h2>
-      <p class="sub">Prefer email or your branch representative.</p>
-      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Membership</h3><p>membership@adagbor-association.org</p></div></div>
-      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>General enquiries</h3><p>info@adagbor-association.org</p></div></div>
-      <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Ancestral home</h3><p>Ugbedu, Kogi State, Nigeria</p></div></div>
-    </div>
-  </div>
-</section>
-<script>
-  document.getElementById('contactForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    document.getElementById('formNote').style.display = 'block';
-    this.reset();
-  });
-</script>
 
+<section class="section">
+  <div class="wrap">
+    <h2>Executive committee</h2>
+    <p class="sub">Names and numbers are maintained by the association admin.</p>
+    <div id="emptyNote">Executive contacts have not been published yet. Please check back soon, or use membership@adagbor-association.org.</div>
+    <div class="exec-grid" id="execGrid"></div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;width:100%;">
@@ -136,6 +100,7 @@
     <div>Ancestral home: Ugbedu &middot; Branches: Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji &amp; others</div>
   </div>
 </footer>
+
 <script>
   const navToggle = document.getElementById('navToggle');
   const siteNav = document.getElementById('siteNav');
@@ -143,7 +108,62 @@
     const isOpen = siteNav.classList.toggle('open');
     navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
+
+  const STORAGE_KEY = 'adagbor_executives';
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+  }
+
+  function loadExecutives() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const list = JSON.parse(raw);
+        if (Array.isArray(list) && list.length) return list;
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function render() {
+    const list = loadExecutives().filter(e => e && (e.name || e.role));
+    const grid = document.getElementById('execGrid');
+    const empty = document.getElementById('emptyNote');
+    grid.innerHTML = '';
+    if (!list.length) {
+      empty.style.display = 'block';
+      return;
+    }
+    empty.style.display = 'none';
+    list.forEach(e => {
+      const phone = (e.phone || '').trim();
+      const email = (e.email || '').trim();
+      const card = document.createElement('div');
+      card.className = 'exec-card';
+      card.innerHTML = `
+        <div class="role">${escapeHtml(e.role || 'Officer')}</div>
+        <h3>${escapeHtml(e.name || '—')}</h3>
+        <div class="branch">${escapeHtml(e.branch || '')}</div>
+        ${phone ? `<div class="line">Phone: <a href="tel:${escapeHtml(phone)}">${escapeHtml(phone)}</a></div>` : '<div class="line muted">Phone: not listed</div>'}
+        ${email ? `<div class="line">Email: <a href="mailto:${escapeHtml(email)}">${escapeHtml(email)}</a></div>` : '<div class="line muted">Email: not listed</div>'}
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  // Prefer shared file if admin has published executives.json (optional)
+  fetch('executives.json', { cache: 'no-store' })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (Array.isArray(data) && data.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      }
+    })
+    .catch(() => {})
+    .finally(render);
 </script>
 </body>
 </html>
-

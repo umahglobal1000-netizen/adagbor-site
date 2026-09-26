@@ -34,17 +34,38 @@
     border-radius: 8px;
     padding: 24px;
   }
-  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee6d0; }
-  .row:last-child { border-bottom: none; }
-  .row span:first-child { color: #7a6f4f; }
-  .row span:last-child { font-weight: bold; }
-  #status-banner {
-    padding: 10px 16px;
-    border-radius: 4px;
-    margin-bottom: 16px;
-    font-size: 0.9rem;
+  .profile-head {
+    display: flex;
+    gap: 18px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #eee6d0;
   }
+  .profile-photo {
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #d8cfae;
+    background: #f5f0e1;
+    flex-shrink: 0;
+  }
+  .profile-photo.placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #a89b6e;
+  }
+  .profile-name { font-size: 1.15rem; font-weight: bold; color: #4a3f22; margin: 0 0 4px; }
+  .profile-meta { font-size: 0.9rem; color: #7a6f4f; margin: 0; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee6d0; }
+  .row:last-child { border-bottom: none; }
+  .row span:first-child { color: #7a6f4f; flex-shrink: 0; }
+  .row span:last-child { font-weight: bold; text-align: right; }
   #loading, #error { text-align: center; color: #7a6f4f; }
+  .error { color: #a33; }
 </style>
 </head>
 <body>
@@ -64,6 +85,12 @@
 <script>
 const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
 
+function escapeHtml(str) {
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
 async function loadMe() {
   try {
     const res = await fetch(`${API_BASE}/api/member/me`, { credentials: "include" });
@@ -82,7 +109,14 @@ async function loadMe() {
 
     const m = data.member;
     const fields = document.getElementById("fields");
-    fields.innerHTML = [
+    const photo = m.photo || m.photograph || m.avatar || '';
+    const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
+
+    const photoHtml = photo
+      ? `<img class="profile-photo" src="${escapeHtml(photo)}" alt="Membership photo">`
+      : `<div class="profile-photo placeholder" aria-hidden="true">${escapeHtml(initial)}</div>`;
+
+    const rows = [
       ["Full name", m.full_name],
       ["Gender", m.gender],
       ["Date of birth", m.date_of_birth],
@@ -95,8 +129,19 @@ async function loadMe() {
       ["Next of kin phone", m.next_of_kin_phone],
       ["Membership status", m.status],
     ].map(([label, value]) =>
-      `<div class="row"><span>${label}</span><span>${value || "—"}</span></div>`
+      `<div class="row"><span>${label}</span><span>${escapeHtml(value || "—")}</span></div>`
     ).join("");
+
+    fields.innerHTML = `
+      <div class="profile-head">
+        ${photoHtml}
+        <div>
+          <p class="profile-name">${escapeHtml(m.full_name || 'Member')}</p>
+          <p class="profile-meta">${escapeHtml(m.branch || '')}${m.status ? ' · ' + escapeHtml(m.status) : ''}</p>
+        </div>
+      </div>
+      ${rows}
+    `;
 
     document.getElementById("content").style.display = "block";
   } catch (err) {

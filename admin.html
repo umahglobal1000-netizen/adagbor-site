@@ -5,18 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin — Adagbor Descendant Association</title>
 <link rel="icon" type="image/png" href="favicon-32.png">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <style>
   body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background: #faf7f0; color: #222; }
-  header { background: #1e4d2b; color: #fff; padding: 16px 20px; }
+  header { background: #1e4d2b; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
   header h1 { margin: 0; font-size: 18px; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 20px; }
+  header a { color: #c8e6d0; font-size: 13px; text-decoration: none; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
   #loginBox { max-width: 360px; margin: 60px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   #loginBox input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
   #loginBox button, .actionBtn { background: #1e4d2b; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
   #loginBox button:hover, .actionBtn:hover { background: #163c21; }
+  .actionBtn.secondary { background: #fff; color: #1e4d2b; border: 1px solid #1e4d2b; }
+  .actionBtn.danger { background: #fff; color: #b00020; border: 1px solid #b00020; }
   table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; white-space: nowrap; }
-  th { background: #f0ece1; position: sticky; top: 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
+  th { background: #f0ece1; position: sticky; top: 0; white-space: nowrap; }
+  td { white-space: nowrap; }
+  td.wrap-cell { white-space: normal; max-width: 220px; }
   tr:hover { background: #fafafa; }
   .status { padding: 3px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; }
   .status.pending { background: #fff3cd; color: #856404; }
@@ -24,49 +31,251 @@
   .status.rejected { background: #f8d7da; color: #721c24; }
   .tableScroll { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; }
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
-  select { padding: 4px; border-radius: 4px; border: 1px solid #ccc; }
+  .toolbar-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  select { padding: 6px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
   #error { color: #b00020; margin-top: 8px; }
-  #count { color: #555; font-size: 14px; }
+  #count, #listCount { color: #555; font-size: 14px; }
+  .panel { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-bottom: 28px; }
+  .panel h2 { margin: 0 0 6px; font-size: 17px; }
+  .panel .hint { color: #666; font-size: 13px; margin: 0 0 16px; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
+  .form-row input, .form-row select {
+    width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
+    box-sizing: border-box; font-size: 14px;
+  }
+  .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  #execMsg { font-size: 13px; margin-top: 10px; color: #155724; }
+  #execMsg.err { color: #b00020; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e0d8c0; flex-wrap: wrap; }
+  .tab { padding: 10px 16px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; }
+  .tab.active { color: #1e4d2b; border-bottom-color: #1e4d2b; font-weight: 600; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Print-only members list */
+  #printArea { display: none; }
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea {
+      display: block !important;
+      position: absolute; left: 0; top: 0; width: 100%;
+      padding: 24px; font-family: Georgia, serif; color: #000;
+    }
+    #printArea h1 { font-size: 18px; margin: 0 0 4px; }
+    #printArea .meta { font-size: 12px; color: #444; margin-bottom: 16px; }
+    #printArea table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    #printArea th, #printArea td {
+      border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal;
+    }
+    #printArea th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+
+  .thumb {
+    width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
+    border: 1px solid #ddd; background: #f0ece1; vertical-align: middle;
+  }
+  .thumb-ph {
+    display: inline-flex; width: 40px; height: 40px; border-radius: 50%;
+    align-items: center; justify-content: center; background: #f0ece1;
+    color: #888; font-size: 14px; font-weight: 600; vertical-align: middle;
+  }
+
+  @media (max-width: 640px) {
+    .form-row { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
 
-<header><h1>Adagbor Descendant Association — Admin</h1></header>
+<header>
+  <h1>Adagbor Descendant Association — Admin</h1>
+  <a href="contact.html" target="_blank">View public contacts →</a>
+</header>
 
 <div class="wrap">
 
   <div id="loginBox">
     <h2>Admin login</h2>
-    <p>Enter the admin key to view membership applications.</p>
+    <p>Enter the admin key to manage applications, members list, and executive contacts.</p>
     <input type="password" id="adminKeyInput" placeholder="Admin key">
     <button onclick="login()">Log in</button>
     <div id="error"></div>
   </div>
 
   <div id="dashboard" style="display:none;">
-    <div class="toolbar">
-      <span id="count"></span>
-      <button class="actionBtn" onclick="loadMembers()">Refresh</button>
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="members" onclick="switchTab('members')">Applications</button>
+      <button type="button" class="tab" data-tab="list" onclick="switchTab('list')">Members directory</button>
+      <button type="button" class="tab" data-tab="executives" onclick="switchTab('executives')">Executive contacts</button>
     </div>
-    <div class="tableScroll">
-      <table id="membersTable">
-        <thead>
-          <tr>
-            <th>ID</th><th>Name</th><th>Gender</th><th>DOB</th><th>Branch</th>
-            <th>Occupation</th><th>Phone</th><th>Email</th><th>Address</th>
-            <th>Next of kin</th><th>Kin phone</th><th>Status</th><th>Submitted</th><th>Action</th>
-          </tr>
-        </thead>
-        <tbody id="membersBody"></tbody>
-      </table>
+
+    <!-- Applications (full detail + status change) -->
+    <div id="tab-members" class="tab-panel active">
+      <div class="toolbar">
+        <span id="count"></span>
+        <button class="actionBtn" onclick="loadMembers()">Refresh</button>
+      </div>
+      <div class="tableScroll">
+        <table id="membersTable">
+          <thead>
+            <tr>
+              <th>ID</th><th>Photo</th><th>Name</th><th>Gender</th><th>DOB</th><th>Branch</th>
+              <th>Occupation</th><th>Phone</th><th>Email</th><th>Address</th>
+              <th>Next of kin</th><th>Kin phone</th><th>Status</th><th>Submitted</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="membersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Members directory: name, phone, home address — PDF + print -->
+    <div id="tab-list" class="tab-panel">
+      <div class="toolbar">
+        <span id="listCount"></span>
+        <div class="toolbar-right">
+          <label style="font-size:13px;color:#555;">
+            Show
+            <select id="listFilter" onchange="renderMembersList()">
+              <option value="approved">Approved only</option>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending only</option>
+            </select>
+          </label>
+          <button type="button" class="actionBtn secondary" onclick="printMembersList()">Print</button>
+          <button type="button" class="actionBtn" onclick="downloadMembersPdf()">Download PDF</button>
+        </div>
+      </div>
+      <div class="tableScroll">
+        <table id="membersListTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Photo</th>
+              <th>Full name</th>
+              <th>Branch</th>
+              <th>Phone number</th>
+              <th>Home address</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="membersListBody"></tbody>
+        </table>
+      </div>
+      <p class="hint" style="margin-top:12px;color:#666;font-size:13px;">Admin only: use <strong>Download PDF</strong> or <strong>Print</strong>. This directory is not available for download on the member dashboard.</p>
+    </div>
+
+    <!-- Executive contacts -->
+    <div id="tab-executives" class="tab-panel">
+      <div class="panel">
+        <h2>Add / edit executive contact</h2>
+        <p class="hint">These details appear on the public Contact page. After saving, download <code>executives.json</code> and upload it with the site files.</p>
+        <input type="hidden" id="execId">
+        <div class="form-row">
+          <div>
+            <label for="execRole">Role</label>
+            <select id="execRole">
+              <option>President</option>
+              <option>Vice President</option>
+              <option>Secretary</option>
+              <option>Assistant Secretary</option>
+              <option>Treasurer</option>
+              <option>Financial Secretary</option>
+              <option>Public Relations Officer</option>
+              <option>Welfare Officer</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="execBranch">Branch</label>
+            <select id="execBranch">
+              <option value="">Select</option>
+              <option>Ugbedu</option>
+              <option>Itobe</option>
+              <option>Ajaokuta</option>
+              <option>Ukpo</option>
+              <option>Allo-Dodogbaji</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="execName">Full name</label>
+            <input type="text" id="execName" placeholder="Officer's name">
+          </div>
+          <div>
+            <label for="execPhone">Phone</label>
+            <input type="tel" id="execPhone" placeholder="+234...">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="execEmail">Email</label>
+            <input type="email" id="execEmail" placeholder="name@example.com">
+          </div>
+          <div></div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="actionBtn" onclick="saveExecutive()">Save contact</button>
+          <button type="button" class="actionBtn secondary" onclick="clearExecForm()">Clear form</button>
+          <button type="button" class="actionBtn secondary" onclick="downloadExecutivesJson()">Download executives.json</button>
+        </div>
+        <div id="execMsg"></div>
+      </div>
+
+      <div class="toolbar">
+        <span id="execCount">0 contact(s)</span>
+      </div>
+      <div class="tableScroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Role</th><th>Name</th><th>Branch</th><th>Phone</th><th>Email</th><th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="execBody"></tbody>
+        </table>
+      </div>
     </div>
   </div>
 
 </div>
 
+<!-- Hidden printable layout -->
+<div id="printArea" aria-hidden="true">
+  <h1>Adagbor Descendant Association — Members directory</h1>
+  <div class="meta" id="printMeta"></div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Photo</th>
+        <th>Full name</th>
+        <th>Branch</th>
+        <th>Phone number</th>
+        <th>Home address</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="printBody"></tbody>
+  </table>
+</div>
+
 <script>
   const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+  const EXEC_KEY = "adagbor_executives";
   let adminKey = "";
+  let allMembers = [];
+
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+    if (name === 'executives') renderExecutives();
+    if (name === 'list') renderMembersList();
+  }
 
   async function login() {
     const key = document.getElementById('adminKeyInput').value.trim();
@@ -77,6 +286,8 @@
       document.getElementById('loginBox').style.display = 'none';
       document.getElementById('dashboard').style.display = 'block';
       sessionStorage.setItem('adminKey', adminKey);
+      renderExecutives();
+      renderMembersList();
     }
   }
 
@@ -93,7 +304,9 @@
       }
       if (!res.ok) throw new Error('Request failed');
       const data = await res.json();
-      renderMembers(data.members || []);
+      allMembers = data.members || [];
+      renderMembers(allMembers);
+      renderMembersList();
       return true;
     } catch (err) {
       errorEl.textContent = 'Could not load members. Check your connection and try again.';
@@ -109,6 +322,7 @@
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${m.id}</td>
+        <td>${memberPhoto(m)}</td>
         <td>${escapeHtml(m.full_name || '')}</td>
         <td>${escapeHtml(m.gender || '')}</td>
         <td>${escapeHtml(m.date_of_birth || '')}</td>
@@ -116,7 +330,7 @@
         <td>${escapeHtml(m.occupation || '')}</td>
         <td>${escapeHtml(m.phone || '')}</td>
         <td>${escapeHtml(m.email || '')}</td>
-        <td>${escapeHtml(m.address || '')}</td>
+        <td class="wrap-cell">${escapeHtml(m.address || '')}</td>
         <td>${escapeHtml(m.next_of_kin_name || '')}</td>
         <td>${escapeHtml(m.next_of_kin_phone || '')}</td>
         <td><span class="status ${m.status}">${m.status}</span></td>
@@ -134,6 +348,129 @@
     });
   }
 
+  function filteredMembers() {
+    const filter = document.getElementById('listFilter')?.value || 'approved';
+    if (filter === 'all') return allMembers.slice();
+    return allMembers.filter(m => (m.status || '').toLowerCase() === filter);
+  }
+
+  function renderMembersList() {
+    const list = filteredMembers();
+    document.getElementById('listCount').textContent = `${list.length} member(s)`;
+    const body = document.getElementById('membersListBody');
+    body.innerHTML = '';
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="7" style="color:#888;">No members match this filter.</td></tr>';
+      return;
+    }
+    list.forEach((m, i) => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${i + 1}</td>
+        <td>${memberPhoto(m)}</td>
+        <td>${escapeHtml(m.full_name || '')}</td>
+        <td>${escapeHtml(m.branch || '')}</td>
+        <td>${escapeHtml(m.phone || '')}</td>
+        <td class="wrap-cell">${escapeHtml(m.address || '')}</td>
+        <td><span class="status ${m.status || ''}">${escapeHtml(m.status || '')}</span></td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  function buildPrintTable() {
+    const list = filteredMembers();
+    const filter = document.getElementById('listFilter').value;
+    const label = filter === 'all' ? 'All statuses' : filter.charAt(0).toUpperCase() + filter.slice(1);
+    const now = new Date().toLocaleString();
+    document.getElementById('printMeta').textContent =
+      `Filter: ${label} · ${list.length} member(s) · Generated ${now} · Ancestral home: Ugbedu, Kogi State`;
+    const body = document.getElementById('printBody');
+    body.innerHTML = list.map((m, i) => {
+      const src = m.photo || m.photograph || m.avatar || '';
+      const photoCell = src
+        ? `<img src="${escapeHtml(src)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+        : '—';
+      return `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${photoCell}</td>
+        <td>${escapeHtml(m.full_name || '')}</td>
+        <td>${escapeHtml(m.branch || '')}</td>
+        <td>${escapeHtml(m.phone || '')}</td>
+        <td>${escapeHtml(m.address || '')}</td>
+        <td>${escapeHtml(m.status || '')}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function printMembersList() {
+    buildPrintTable();
+    window.print();
+  }
+
+  function downloadMembersPdf() {
+    const list = filteredMembers();
+    if (!list.length) {
+      alert('No members to export for this filter.');
+      return;
+    }
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      alert('PDF library failed to load. Check your connection and try again, or use Print.');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+    const filter = document.getElementById('listFilter').value;
+    const label = filter === 'all' ? 'All statuses' : filter.charAt(0).toUpperCase() + filter.slice(1);
+    const now = new Date().toLocaleString();
+
+    doc.setFontSize(14);
+    doc.setTextColor(30, 77, 43);
+    doc.text('Adagbor Descendant Association — Members directory', 40, 36);
+    doc.setFontSize(9);
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Filter: ${label}  |  ${list.length} member(s)  |  Generated ${now}`, 40, 52);
+    doc.text('Ancestral home: Ugbedu, Kogi State  ·  Branches: Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji & others', 40, 64);
+
+    const rows = list.map((m, i) => [
+      String(i + 1),
+      m.full_name || '',
+      m.branch || '',
+      m.phone || '',
+      m.address || '',
+      m.status || ''
+    ]);
+
+    doc.autoTable({
+      startY: 76,
+      head: [['#', 'Full name', 'Branch', 'Phone number', 'Home address', 'Status']],  /* photos shown on screen list */
+      body: rows,
+      styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+      headStyles: { fillColor: [30, 77, 43], textColor: 255, fontStyle: 'bold' },
+      columnStyles: {
+        0: { cellWidth: 28 },
+        1: { cellWidth: 120 },
+        2: { cellWidth: 70 },
+        3: { cellWidth: 90 },
+        4: { cellWidth: 'auto' },
+        5: { cellWidth: 55 }
+      },
+      margin: { left: 40, right: 40 }
+    });
+
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
+    }
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    doc.save(`adagbor-members-directory-${stamp}.pdf`);
+  }
+
   async function updateStatus(id, status) {
     if (!status) return;
     try {
@@ -148,13 +485,133 @@
     }
   }
 
+
+  function memberPhoto(m) {
+    const src = m.photo || m.photograph || m.avatar || '';
+    if (src) return `<img class="thumb" src="${escapeHtml(src)}" alt="">`;
+    const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
+    return `<span class="thumb-ph">${escapeHtml(initial)}</span>`;
+  }
+
   function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, c => ({
+    return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
       '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
     }[c]));
   }
 
-  // Auto-login if key already stored this session
+  /* ---- Executive contacts ---- */
+
+  function getExecutives() {
+    try {
+      const raw = localStorage.getItem(EXEC_KEY);
+      if (!raw) return [];
+      const list = JSON.parse(raw);
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function setExecutives(list) {
+    localStorage.setItem(EXEC_KEY, JSON.stringify(list));
+  }
+
+  function clearExecForm() {
+    document.getElementById('execId').value = '';
+    document.getElementById('execRole').value = 'President';
+    document.getElementById('execBranch').value = '';
+    document.getElementById('execName').value = '';
+    document.getElementById('execPhone').value = '';
+    document.getElementById('execEmail').value = '';
+    document.getElementById('execMsg').textContent = '';
+  }
+
+  function saveExecutive() {
+    const id = document.getElementById('execId').value;
+    const entry = {
+      id: id || String(Date.now()),
+      role: document.getElementById('execRole').value.trim(),
+      name: document.getElementById('execName').value.trim(),
+      branch: document.getElementById('execBranch').value.trim(),
+      phone: document.getElementById('execPhone').value.trim(),
+      email: document.getElementById('execEmail').value.trim()
+    };
+    if (!entry.name) {
+      const msg = document.getElementById('execMsg');
+      msg.textContent = 'Name is required.';
+      msg.className = 'err';
+      return;
+    }
+    let list = getExecutives();
+    const idx = list.findIndex(e => e.id === entry.id);
+    if (idx >= 0) list[idx] = entry;
+    else list.push(entry);
+    setExecutives(list);
+    clearExecForm();
+    renderExecutives();
+    const msg = document.getElementById('execMsg');
+    msg.textContent = 'Saved. Download executives.json and upload it with the site so the Contact page stays up to date.';
+    msg.className = '';
+  }
+
+  function editExecutive(id) {
+    const e = getExecutives().find(x => x.id === id);
+    if (!e) return;
+    document.getElementById('execId').value = e.id;
+    document.getElementById('execRole').value = e.role || 'President';
+    document.getElementById('execBranch').value = e.branch || '';
+    document.getElementById('execName').value = e.name || '';
+    document.getElementById('execPhone').value = e.phone || '';
+    document.getElementById('execEmail').value = e.email || '';
+    switchTab('executives');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function deleteExecutive(id) {
+    if (!confirm('Remove this contact?')) return;
+    setExecutives(getExecutives().filter(e => e.id !== id));
+    renderExecutives();
+  }
+
+  function renderExecutives() {
+    const list = getExecutives();
+    document.getElementById('execCount').textContent = `${list.length} contact(s)`;
+    const body = document.getElementById('execBody');
+    body.innerHTML = '';
+    if (!list.length) {
+      body.innerHTML = '<tr><td colspan="6" style="color:#888;">No executive contacts yet. Add them using the form above.</td></tr>';
+      return;
+    }
+    list.forEach(e => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${escapeHtml(e.role || '')}</td>
+        <td>${escapeHtml(e.name || '')}</td>
+        <td>${escapeHtml(e.branch || '')}</td>
+        <td>${escapeHtml(e.phone || '')}</td>
+        <td>${escapeHtml(e.email || '')}</td>
+        <td>
+          <button type="button" class="actionBtn secondary" onclick="editExecutive('${escapeHtml(e.id)}')">Edit</button>
+          <button type="button" class="actionBtn danger" onclick="deleteExecutive('${escapeHtml(e.id)}')">Delete</button>
+        </td>
+      `;
+      body.appendChild(tr);
+    });
+  }
+
+  function downloadExecutivesJson() {
+    const list = getExecutives();
+    const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'executives.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    const msg = document.getElementById('execMsg');
+    msg.textContent = 'Downloaded. Upload executives.json into the same folder as contact.html on your host.';
+    msg.className = '';
+  }
+
   window.addEventListener('DOMContentLoaded', () => {
     const stored = sessionStorage.getItem('adminKey');
     if (stored) {
