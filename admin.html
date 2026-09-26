@@ -198,10 +198,17 @@
               <option value="other">Other Contribution</option>
             </select>
           </div>
+          <div>
+            <label for="payDate">Date</label>
+            <input type="date" id="payDate" onchange="renderPayDayTotal()">
+          </div>
           <div id="payOtherNameWrap" style="display:none;">
             <label for="payOtherName">Contribution name</label>
             <input type="text" id="payOtherName" placeholder="e.g. Building levy" oninput="renderPayDayTotal()">
           </div>
+        </div>
+
+        <div class="form-row three">
           <div id="payPeriodWrap" style="display:none;">
             <label for="payPeriod">Month</label>
             <input type="month" id="payPeriod">
@@ -210,16 +217,16 @@
             <label for="payBeneficiary">Donation to (member)</label>
             <select id="payBeneficiary"></select>
           </div>
+          <div id="payPurposeWrap" style="display:none;">
+            <label for="payPurpose">Purpose of donation</label>
+            <input type="text" id="payPurpose" placeholder="e.g. Medical support, wedding gift">
+          </div>
         </div>
 
         <div class="form-row three">
           <div>
             <label for="payMember">Member</label>
             <select id="payMember"></select>
-          </div>
-          <div>
-            <label for="payDate">Date</label>
-            <input type="date" id="payDate" onchange="renderPayDayTotal()">
           </div>
           <div>
             <label for="payAmount">Amount (₦)</label>
@@ -245,7 +252,7 @@
           <table>
             <thead>
               <tr>
-                <th>Date</th><th>Member</th><th>Type</th><th>Amount</th><th>Period / beneficiary</th><th>Note</th><th></th>
+                <th>Date</th><th>Member</th><th>Type</th><th>Amount</th><th>Period / beneficiary</th><th>Purpose</th><th>Note</th><th></th>
               </tr>
             </thead>
             <tbody id="payHistoryBody"></tbody>
@@ -1059,6 +1066,7 @@ function onPayTypeChange() {
   document.getElementById("payOtherNameWrap").style.display = val === "other" ? "block" : "none";
   document.getElementById("payPeriodWrap").style.display = val === "monthly" ? "block" : "none";
   document.getElementById("payBeneficiaryWrap").style.display = val === "donation" ? "block" : "none";
+  document.getElementById("payPurposeWrap").style.display = val === "donation" ? "block" : "none";
   renderPayDayTotal();
 }
 
@@ -1083,6 +1091,9 @@ function saveContributionPayment() {
     : "";
   if (type.kind === "donation" && !beneficiaryKey) { msg.className = "err"; msg.textContent = "Select the member receiving the voluntary contribution."; return; }
 
+  const purpose = document.getElementById("payPurpose").value.trim();
+  if (type.kind === "donation" && !purpose) { msg.className = "err"; msg.textContent = "Enter the purpose of the donation."; return; }
+
   addPaymentRecords([{
     id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
     memberKey: memberKeyVal,
@@ -1097,11 +1108,13 @@ function saveContributionPayment() {
     period: period,
     beneficiaryKey: beneficiaryKey,
     beneficiaryName: beneficiaryName,
+    purpose: purpose,
     note: "",
     createdAt: new Date().toISOString()
   }]);
 
   document.getElementById("payAmount").value = "";
+  document.getElementById("payPurpose").value = "";
   msg.textContent = `Saved ${type.name} of ${amount.toLocaleString()} for ${m.full_name}.`;
   renderPayDayTotal();
 }
@@ -1132,7 +1145,7 @@ function renderPayHistory() {
   document.getElementById("payHistoryCount").textContent = `${list.length} record(s)`;
   const body = document.getElementById("payHistoryBody");
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No payments recorded yet.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="color:#888;">No payments recorded yet.</td></tr>';
     return;
   }
   body.innerHTML = list.slice(0, 200).map(p => {
@@ -1145,6 +1158,7 @@ function renderPayHistory() {
       <td>${escapeHtml(p.typeName || "")}</td>
       <td>${Number(p.amount || 0).toLocaleString()}</td>
       <td>${escapeHtml(extra)}</td>
+      <td class="wrap-cell">${escapeHtml(p.purpose || "")}</td>
       <td class="wrap-cell">${escapeHtml(p.note || "")}</td>
       <td><button type="button" class="actionBtn danger" onclick="deletePayment('${escapeHtml(p.id)}')">Delete</button></td>
     </tr>`;
