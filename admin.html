@@ -164,6 +164,7 @@
               <option value="pending">Pending only</option>
             </select>
           </label>
+          <button type="button" class="actionBtn" onclick="openMemberAdd()">Add member</button>
           <button type="button" class="actionBtn secondary" onclick="printMembersList()">Print</button>
           <button type="button" class="actionBtn" onclick="downloadMembersPdf()">Download PDF</button>
         </div>
@@ -506,6 +507,54 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="memberAddOverlay">
+  <div class="modal-box">
+    <h2>Add member</h2>
+    <p class="hint">Added directly by admin — goes straight into the directory as approved. A numeric password is generated automatically for them to log in with.</p>
+    <div class="form-row">
+      <div><label>Full name</label><input type="text" id="addFullName"></div>
+      <div><label>Gender</label>
+        <select id="addGender">
+          <option value="">—</option><option value="Male">Male</option><option value="Female">Female</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Date of birth</label><input type="date" id="addDob"></div>
+      <div><label>Branch</label><input type="text" id="addBranch"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Occupation</label><input type="text" id="addOccupation"></div>
+      <div><label>Phone</label><input type="text" id="addPhone"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Email</label><input type="text" id="addEmail"></div>
+      <div style="grid-column: 1 / -1;"><label>Address</label><input type="text" id="addAddress"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Next of kin name</label><input type="text" id="addKinName"></div>
+      <div><label>Next of kin phone</label><input type="text" id="addKinPhone"></div>
+    </div>
+    <div id="memberAddMsg"></div>
+    <div class="form-actions">
+      <button type="button" class="actionBtn" id="memberAddSaveBtn" onclick="saveMemberAdd()">Add member</button>
+      <button type="button" class="actionBtn secondary" onclick="closeMemberAdd()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="passwordRevealOverlay">
+  <div class="modal-box" style="max-width:420px;">
+    <h2 id="passwordRevealTitle">Password</h2>
+    <p class="hint" id="passwordRevealHint">Share this with the member directly (phone call, WhatsApp, in person). It will not be shown again.</p>
+    <p style="font-size:28px;font-weight:700;letter-spacing:2px;text-align:center;background:#f5f2e8;border-radius:6px;padding:14px;margin:10px 0;" id="passwordRevealValue"></p>
+    <div class="form-actions">
+      <button type="button" class="actionBtn" onclick="copyRevealedPassword()">Copy</button>
+      <button type="button" class="actionBtn secondary" onclick="closePasswordReveal()">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
 const EXEC_KEY = "adagbor_executives";
@@ -639,6 +688,7 @@ function renderMembersList() {
       <td><span class="status ${m.status || ""}">${escapeHtml(m.status || "")}</span></td>
       <td>
         <button type="button" class="actionBtn secondary" onclick="openMemberEdit(${m.id})">Edit</button>
+        <button type="button" class="actionBtn secondary" onclick="generateMemberPassword(${m.id})">New password</button>
         <button type="button" class="actionBtn danger" onclick="deleteMember(${m.id})">Delete</button>
       </td>`;
     body.appendChild(tr);
@@ -750,6 +800,107 @@ async function saveMemberEdit() {
   } catch (err) {
     msg.className = "err";
     msg.textContent = err.message || "Could not save changes.";
+  }
+}
+
+function openMemberAdd() {
+  document.getElementById("addFullName").value = "";
+  document.getElementById("addGender").value = "";
+  document.getElementById("addDob").value = "";
+  document.getElementById("addBranch").value = "";
+  document.getElementById("addOccupation").value = "";
+  document.getElementById("addPhone").value = "";
+  document.getElementById("addEmail").value = "";
+  document.getElementById("addAddress").value = "";
+  document.getElementById("addKinName").value = "";
+  document.getElementById("addKinPhone").value = "";
+  const msg = document.getElementById("memberAddMsg");
+  msg.textContent = "";
+  msg.className = "";
+  document.getElementById("memberAddOverlay").classList.add("open");
+}
+
+function closeMemberAdd() {
+  document.getElementById("memberAddOverlay").classList.remove("open");
+}
+
+async function saveMemberAdd() {
+  const fullName = document.getElementById("addFullName").value.trim();
+  const phone = document.getElementById("addPhone").value.trim();
+  const msg = document.getElementById("memberAddMsg");
+  msg.className = "";
+  if (!fullName || !phone) {
+    msg.className = "err";
+    msg.textContent = "Full name and phone are required.";
+    return;
+  }
+  msg.textContent = "Adding…";
+  const payload = {
+    full_name: fullName,
+    gender: document.getElementById("addGender").value,
+    date_of_birth: document.getElementById("addDob").value,
+    branch: document.getElementById("addBranch").value.trim(),
+    occupation: document.getElementById("addOccupation").value.trim(),
+    phone,
+    email: document.getElementById("addEmail").value.trim(),
+    address: document.getElementById("addAddress").value.trim(),
+    next_of_kin_name: document.getElementById("addKinName").value.trim(),
+    next_of_kin_phone: document.getElementById("addKinPhone").value.trim(),
+  };
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not add member.");
+    msg.textContent = "Added.";
+    await loadMembers();
+    closeMemberAdd();
+    showPasswordReveal(`Password for ${fullName}`, data.password, "Share this with them directly — it will not be shown again. They can log in with their phone/email and this password.");
+  } catch (err) {
+    msg.className = "err";
+    msg.textContent = err.message || "Could not add member.";
+  }
+}
+
+async function generateMemberPassword(id) {
+  const m = allMembers.find(x => x.id === id);
+  const label = m ? (m.full_name || "this member") : "this member";
+  if (!confirm(`Generate a new password for ${label}? Their current password will stop working.`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members/${id}/generate-password`, {
+      method: "POST",
+      headers: { "X-Admin-Key": adminKey }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not generate password.");
+    showPasswordReveal(`New password for ${label}`, data.password, "Share this with them directly — it will not be shown again.");
+  } catch (err) {
+    alert(err.message || "Could not generate password.");
+  }
+}
+
+let revealedPassword = "";
+
+function showPasswordReveal(title, password, hint) {
+  document.getElementById("passwordRevealTitle").textContent = title || "Password";
+  document.getElementById("passwordRevealValue").textContent = password || "";
+  if (hint) document.getElementById("passwordRevealHint").textContent = hint;
+  revealedPassword = password || "";
+  document.getElementById("passwordRevealOverlay").classList.add("open");
+}
+
+function closePasswordReveal() {
+  document.getElementById("passwordRevealOverlay").classList.remove("open");
+  revealedPassword = "";
+}
+
+function copyRevealedPassword() {
+  if (!revealedPassword) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(revealedPassword).catch(() => {});
   }
 }
 
