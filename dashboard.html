@@ -12,12 +12,14 @@
     margin: 0;
     padding: 30px 16px;
   }
-  .wrap { max-width: 560px; margin: 0 auto; }
+  .wrap { max-width: 720px; margin: 0 auto; }
   header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
   }
   h1 { font-size: 1.4rem; color: #4a3f22; margin: 0; }
   button#logout {
@@ -28,6 +30,29 @@
     border-radius: 4px;
     cursor: pointer;
   }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid #d8cfae;
+  }
+  .tab {
+    padding: 10px 14px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: #7a6f4f;
+  }
+  .tab.active {
+    color: #4a3f22;
+    border-bottom-color: #5a4a1f;
+    font-weight: bold;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
   .card {
     background: #fff;
     border: 1px solid #d8cfae;
@@ -64,8 +89,87 @@
   .row:last-child { border-bottom: none; }
   .row span:first-child { color: #7a6f4f; flex-shrink: 0; }
   .row span:last-child { font-weight: bold; text-align: right; }
-  #loading, #error { text-align: center; color: #7a6f4f; }
+  #loading, #error, #dirMsg { text-align: center; color: #7a6f4f; }
   .error { color: #a33; }
+  .dir-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .dir-toolbar span { font-size: 0.9rem; color: #7a6f4f; }
+  .dir-toolbar input {
+    padding: 8px 12px;
+    border: 1px solid #c9bd93;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-family: inherit;
+    min-width: 180px;
+  }
+  .dir-list { display: flex; flex-direction: column; gap: 0; }
+  .dir-item {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    padding: 14px 0;
+    border-bottom: 1px solid #eee6d0;
+  }
+  .dir-item:last-child { border-bottom: none; }
+  .dir-item .thumb {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid #d8cfae;
+    background: #f5f0e1;
+    flex-shrink: 0;
+  }
+  .dir-item .thumb-ph {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: #f0ece1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #a89b6e;
+    font-weight: bold;
+    flex-shrink: 0;
+  }
+  .dir-item h3 { margin: 0 0 4px; font-size: 1rem; color: #4a3f22; }
+  .dir-item p { margin: 2px 0; font-size: 0.88rem; color: #7a6f4f; }
+  .dir-item a { color: #5a4a1f; text-decoration: none; }
+  .dir-item a:hover { text-decoration: underline; }
+
+  .pay-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee6d0;
+    font-size: 0.92rem;
+  }
+  .pay-row:last-child { border-bottom: none; }
+  .pay-row .type { font-weight: bold; color: #4a3f22; }
+  .pay-row .meta { color: #7a6f4f; font-size: 0.85rem; margin-top: 2px; }
+  .pay-row .amt { font-weight: bold; color: #1e4d2b; text-align: right; white-space: nowrap; }
+  .pay-group-title {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #9a8f6f;
+    margin: 18px 0 8px;
+  }
+  .pay-group-title:first-child { margin-top: 0; }
+
+  .readonly-note {
+    font-size: 0.8rem;
+    color: #9a8f6f;
+    margin-top: 16px;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -77,18 +181,63 @@
 
   <div id="loading">Loading your details...</div>
   <div id="error" style="display:none" class="error"></div>
+
   <div id="content" style="display:none">
-    <div class="card" id="fields"></div>
+    <div class="tabs">
+      <button type="button" class="tab active" data-tab="profile" onclick="switchTab('profile')">My profile</button>
+      <button type="button" class="tab" data-tab="directory" onclick="switchTab('directory')">Members directory</button>
+      <button type="button" class="tab" data-tab="payments" onclick="switchTab('payments')">Payment history</button>
+    </div>
+
+    <div id="tab-profile" class="tab-panel active">
+      <div class="card" id="fields"></div>
+    </div>
+
+    <div id="tab-directory" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar">
+          <span id="dirCount">Loading directory…</span>
+          <input type="search" id="dirSearch" placeholder="Search name or branch" oninput="filterDirectory()">
+        </div>
+        <div id="dirMsg" style="display:none"></div>
+        <div class="dir-list" id="dirList"></div>
+        <p class="readonly-note">Read-only view · Contact details for association use only</p>
+      </div>
+    </div>
+
+    <div id="tab-payments" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar">
+          <span id="payCount">Loading…</span>
+        </div>
+        <div id="payMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="payList"></div>
+        <p class="readonly-note">Your contribution records as entered by the committee</p>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
 const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+let directoryMembers = [];
+let currentMember = null;
 
 function escapeHtml(str) {
   return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
+}
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
+  if (name === 'directory' && !directoryMembers.length) {
+    loadDirectory();
+  }
+  if (name === 'payments') {
+    loadPaymentHistory();
+  }
 }
 
 async function loadMe() {
@@ -108,6 +257,7 @@ async function loadMe() {
     }
 
     const m = data.member;
+    currentMember = m;
     const fields = document.getElementById("fields");
     const photo = m.photo || m.photograph || m.avatar || '';
     const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
@@ -150,6 +300,201 @@ async function loadMe() {
     document.getElementById("error").style.display = "block";
   }
 }
+
+async function fetchDirectoryJson() {
+  // Prefer member-facing directory routes; fall back if worker adds them later
+  const paths = [
+    `${API_BASE}/api/member/directory`,
+    `${API_BASE}/api/members/directory`,
+    `${API_BASE}/api/members`,
+  ];
+  for (const url of paths) {
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      if (res.status === 401) {
+        window.location.href = "login.html";
+        return null;
+      }
+      if (!res.ok) continue;
+      const data = await res.json();
+      const list = data.members || data.directory || data;
+      if (Array.isArray(list)) return list;
+    } catch (e) {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+function normalizeDirectory(list) {
+  // Prefer approved members for the public directory view among members
+  const approved = list.filter(m => !m.status || String(m.status).toLowerCase() === 'approved');
+  return (approved.length ? approved : list).map(m => ({
+    full_name: m.full_name || m.name || '',
+    branch: m.branch || '',
+    phone: m.phone || '',
+    address: m.address || '',
+    photo: m.photo || m.photograph || m.avatar || '',
+    status: m.status || '',
+  }));
+}
+
+async function loadDirectory() {
+  const msg = document.getElementById('dirMsg');
+  const listEl = document.getElementById('dirList');
+  const countEl = document.getElementById('dirCount');
+  msg.style.display = 'none';
+  listEl.innerHTML = '';
+  countEl.textContent = 'Loading directory…';
+
+  const raw = await fetchDirectoryJson();
+  if (raw === null) {
+    countEl.textContent = '0 members';
+    msg.style.display = 'block';
+    msg.textContent = 'Members directory is not available yet. Please check back later, or contact the committee.';
+    return;
+  }
+
+  directoryMembers = normalizeDirectory(raw);
+  filterDirectory();
+}
+
+function filterDirectory() {
+  const q = (document.getElementById('dirSearch').value || '').trim().toLowerCase();
+  const filtered = !q
+    ? directoryMembers
+    : directoryMembers.filter(m =>
+        (m.full_name || '').toLowerCase().includes(q) ||
+        (m.branch || '').toLowerCase().includes(q) ||
+        (m.phone || '').toLowerCase().includes(q)
+      );
+
+  document.getElementById('dirCount').textContent = `${filtered.length} member(s)`;
+  const listEl = document.getElementById('dirList');
+  const msg = document.getElementById('dirMsg');
+
+  if (!filtered.length) {
+    listEl.innerHTML = '';
+    msg.style.display = 'block';
+    msg.textContent = directoryMembers.length ? 'No members match your search.' : 'No members to show.';
+    return;
+  }
+  msg.style.display = 'none';
+  listEl.innerHTML = filtered.map(m => {
+    const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
+    const photo = m.photo
+      ? `<img class="thumb" src="${escapeHtml(m.photo)}" alt="">`
+      : `<div class="thumb-ph">${escapeHtml(initial)}</div>`;
+    const phone = m.phone
+      ? `<p>Phone: <a href="tel:${escapeHtml(m.phone)}">${escapeHtml(m.phone)}</a></p>`
+      : '';
+    const address = m.address ? `<p>${escapeHtml(m.address)}</p>` : '';
+    return `
+      <div class="dir-item">
+        ${photo}
+        <div>
+          <h3>${escapeHtml(m.full_name || '—')}</h3>
+          <p>${escapeHtml(m.branch || '')}</p>
+          ${phone}
+          ${address}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+
+const CONTRIB_PAY_KEY = "adagbor_contribution_payments";
+
+async function loadAllPayments() {
+  let list = [];
+  try {
+    const raw = localStorage.getItem(CONTRIB_PAY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) list = parsed;
+    }
+  } catch (e) {}
+  try {
+    const res = await fetch("adagbor-payments.json", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) list = data;
+    }
+  } catch (e) {}
+  try {
+    const res = await fetch("payments.json", { cache: "no-store" });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length) list = data;
+    }
+  } catch (e) {}
+  return list;
+}
+
+function matchesCurrentMember(p, m) {
+  if (!m) return false;
+  const phone = String(m.phone || "").trim();
+  const id = m.id != null ? String(m.id) : "";
+  const name = String(m.full_name || "").trim().toLowerCase();
+  if (id && String(p.memberId) === id) return true;
+  if (id && String(p.memberKey) === id) return true;
+  if (phone && (String(p.memberPhone || "").trim() === phone || String(p.memberKey) === phone)) return true;
+  if (name && String(p.memberName || "").trim().toLowerCase() === name) return true;
+  return false;
+}
+
+async function loadPaymentHistory() {
+  const countEl = document.getElementById("payCount");
+  const msg = document.getElementById("payMsg");
+  const listEl = document.getElementById("payList");
+  if (!countEl) return;
+  countEl.textContent = "Loading…";
+  msg.style.display = "none";
+  listEl.innerHTML = "";
+
+  if (!currentMember) {
+    msg.style.display = "block";
+    msg.textContent = "Profile not loaded.";
+    countEl.textContent = "";
+    return;
+  }
+
+  const all = await loadAllPayments();
+  const mine = all
+    .filter(p => matchesCurrentMember(p, currentMember))
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+  countEl.textContent = mine.length + " payment(s)";
+
+  if (!mine.length) {
+    msg.style.display = "block";
+    msg.textContent = "No contribution records yet for your membership.";
+    return;
+  }
+
+  const groups = {};
+  mine.forEach(p => {
+    const key = p.typeName || p.typeId || "Other";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(p);
+  });
+
+  listEl.innerHTML = Object.keys(groups).sort().map(typeName => {
+    const rows = groups[typeName].map(p => {
+      let extra = "";
+      if (p.kind === "monthly" && p.period) extra = "Period: " + escapeHtml(p.period);
+      if (p.kind === "donation" && p.beneficiaryName) extra = "To: " + escapeHtml(p.beneficiaryName);
+      if (p.note) extra = (extra ? extra + " · " : "") + escapeHtml(p.note);
+      return '<div class="pay-row"><div><div class="type">' + escapeHtml(p.date || "") +
+        '</div><div class="meta">' + (extra || "—") +
+        '</div></div><div class="amt">' +
+        Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
+        '</div></div>';
+    }).join("");
+    return '<div class="pay-group-title">' + escapeHtml(typeName) + '</div>' + rows;
+  }).join("");
+}
+
 
 document.getElementById("logout").addEventListener("click", async () => {
   await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "include" });

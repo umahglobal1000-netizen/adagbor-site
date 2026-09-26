@@ -12,7 +12,7 @@
   header { background: #1e4d2b; color: #fff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
   header h1 { margin: 0; font-size: 18px; }
   header a { color: #c8e6d0; font-size: 13px; text-decoration: none; }
-  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 20px; }
   #loginBox { max-width: 360px; margin: 60px auto; background: #fff; padding: 24px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
   #loginBox input { width: 100%; padding: 10px; margin: 10px 0; box-sizing: border-box; border: 1px solid #ccc; border-radius: 6px; }
   #loginBox button, .actionBtn { background: #1e4d2b; color: #fff; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-size: 14px; }
@@ -21,7 +21,7 @@
   .actionBtn.danger { background: #fff; color: #b00020; border: 1px solid #b00020; }
   table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
   th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #eee; }
-  th { background: #f0ece1; position: sticky; top: 0; white-space: nowrap; }
+  th { background: #f0ece1; position: sticky; top: 0; white-space: nowrap; z-index: 1; }
   td { white-space: nowrap; }
   td.wrap-cell { white-space: normal; max-width: 220px; }
   tr:hover { background: #fafafa; }
@@ -29,61 +29,47 @@
   .status.pending { background: #fff3cd; color: #856404; }
   .status.approved { background: #d4edda; color: #155724; }
   .status.rejected { background: #f8d7da; color: #721c24; }
-  .tableScroll { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; }
+  .tableScroll { overflow-x: auto; border: 1px solid #eee; border-radius: 6px; max-height: 520px; }
   .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
   .toolbar-right { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  select { padding: 6px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+  select, input[type=text], input[type=number], input[type=date], input[type=search], input[type=month] {
+    padding: 6px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; box-sizing: border-box;
+  }
   #error { color: #b00020; margin-top: 8px; }
   #count, #listCount { color: #555; font-size: 14px; }
-  .panel { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-bottom: 28px; }
+  .panel { background: #fff; border: 1px solid #eee; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
   .panel h2 { margin: 0 0 6px; font-size: 17px; }
   .panel .hint { color: #666; font-size: 13px; margin: 0 0 16px; }
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.three { grid-template-columns: 1fr 1fr 1fr; }
   .form-row label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #444; }
-  .form-row input, .form-row select {
-    width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 6px;
-    box-sizing: border-box; font-size: 14px;
-  }
+  .form-row input, .form-row select { width: 100%; padding: 8px 10px; }
   .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
-  #execMsg { font-size: 13px; margin-top: 10px; color: #155724; }
-  #execMsg.err { color: #b00020; }
+  #execMsg, #contribMsg { font-size: 13px; margin-top: 10px; color: #155724; }
+  #execMsg.err, #contribMsg.err { color: #b00020; }
   .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e0d8c0; flex-wrap: wrap; }
-  .tab { padding: 10px 16px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; }
+  .tab { padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; }
   .tab.active { color: #1e4d2b; border-bottom-color: #1e4d2b; font-weight: 600; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
-
-  /* Print-only members list */
+  .thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; background: #f0ece1; vertical-align: middle; }
+  .thumb-ph { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; align-items: center; justify-content: center; background: #f0ece1; color: #888; font-size: 14px; font-weight: 600; vertical-align: middle; }
+  .chip { display: inline-block; padding: 4px 10px; border-radius: 12px; background: #eef5ef; color: #1e4d2b; font-size: 12px; margin: 2px 4px 2px 0; }
+  .chip button { border: none; background: none; color: #b00020; cursor: pointer; margin-left: 4px; font-size: 12px; }
+  .bulk-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; padding: 12px; background: #f5f2e8; border-radius: 6px; margin-bottom: 12px; }
+  .bulk-bar .field { display: flex; flex-direction: column; gap: 4px; }
+  .bulk-bar label { font-size: 11px; font-weight: 600; color: #555; }
+  .amt-input { width: 100px; }
   #printArea { display: none; }
   @media print {
     body * { visibility: hidden; }
     #printArea, #printArea * { visibility: visible; }
-    #printArea {
-      display: block !important;
-      position: absolute; left: 0; top: 0; width: 100%;
-      padding: 24px; font-family: Georgia, serif; color: #000;
-    }
-    #printArea h1 { font-size: 18px; margin: 0 0 4px; }
-    #printArea .meta { font-size: 12px; color: #444; margin-bottom: 16px; }
+    #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; font-family: Georgia, serif; color: #000; }
     #printArea table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    #printArea th, #printArea td {
-      border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal;
-    }
-    #printArea th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    #printArea th, #printArea td { border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal; }
   }
-
-  .thumb {
-    width: 40px; height: 40px; border-radius: 50%; object-fit: cover;
-    border: 1px solid #ddd; background: #f0ece1; vertical-align: middle;
-  }
-  .thumb-ph {
-    display: inline-flex; width: 40px; height: 40px; border-radius: 50%;
-    align-items: center; justify-content: center; background: #f0ece1;
-    color: #888; font-size: 14px; font-weight: 600; vertical-align: middle;
-  }
-
   @media (max-width: 640px) {
-    .form-row { grid-template-columns: 1fr; }
+    .form-row, .form-row.three { grid-template-columns: 1fr; }
   }
 </style>
 </head>
@@ -95,10 +81,9 @@
 </header>
 
 <div class="wrap">
-
   <div id="loginBox">
     <h2>Admin login</h2>
-    <p>Enter the admin key to manage applications, members list, and executive contacts.</p>
+    <p>Enter the admin key to manage applications, directory, contributions, and executive contacts.</p>
     <input type="password" id="adminKeyInput" placeholder="Admin key">
     <button onclick="login()">Log in</button>
     <div id="error"></div>
@@ -108,10 +93,11 @@
     <div class="tabs">
       <button type="button" class="tab active" data-tab="members" onclick="switchTab('members')">Applications</button>
       <button type="button" class="tab" data-tab="list" onclick="switchTab('list')">Members directory</button>
+      <button type="button" class="tab" data-tab="contributions" onclick="switchTab('contributions')">Contributions</button>
       <button type="button" class="tab" data-tab="executives" onclick="switchTab('executives')">Executive contacts</button>
     </div>
 
-    <!-- Applications (full detail + status change) -->
+    <!-- Applications -->
     <div id="tab-members" class="tab-panel active">
       <div class="toolbar">
         <span id="count"></span>
@@ -131,13 +117,12 @@
       </div>
     </div>
 
-    <!-- Members directory: name, phone, home address — PDF + print -->
+    <!-- Members directory -->
     <div id="tab-list" class="tab-panel">
       <div class="toolbar">
         <span id="listCount"></span>
         <div class="toolbar-right">
-          <label style="font-size:13px;color:#555;">
-            Show
+          <label style="font-size:13px;color:#555;">Show
             <select id="listFilter" onchange="renderMembersList()">
               <option value="approved">Approved only</option>
               <option value="all">All statuses</option>
@@ -152,26 +137,114 @@
         <table id="membersListTable">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Photo</th>
-              <th>Full name</th>
-              <th>Branch</th>
-              <th>Phone number</th>
-              <th>Home address</th>
-              <th>Status</th>
+              <th>#</th><th>Photo</th><th>Full name</th><th>Branch</th><th>Phone number</th><th>Home address</th><th>Status</th>
             </tr>
           </thead>
           <tbody id="membersListBody"></tbody>
         </table>
       </div>
-      <p class="hint" style="margin-top:12px;color:#666;font-size:13px;">Admin only: use <strong>Download PDF</strong> or <strong>Print</strong>. This directory is not available for download on the member dashboard.</p>
+      <p style="margin-top:12px;color:#666;font-size:13px;">Admin only: Download PDF or Print. Members see a read-only directory on their dashboard.</p>
+    </div>
+
+    <!-- Contributions -->
+    <div id="tab-contributions" class="tab-panel">
+      <div class="panel">
+        <h2>Contribution types</h2>
+        <p class="hint">Built-in: Registration fee, Monthly due, Voluntary donation to a member. Add other types below.</p>
+        <div id="typeChips"></div>
+        <div class="form-row" style="margin-top:14px;grid-template-columns:1fr auto;align-items:end;">
+          <div>
+            <label for="newTypeName">New contribution type</label>
+            <input type="text" id="newTypeName" placeholder="e.g. Building levy, Welfare levy">
+          </div>
+          <button type="button" class="actionBtn" onclick="addContributionType()">Add type</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Record payments</h2>
+        <p class="hint">Members are listed alphabetically. Tick rows, set amount and details at the top, then apply — or enter amount per row and save that row.</p>
+
+        <div class="bulk-bar">
+          <div class="field">
+            <label>Type of contribution</label>
+            <select id="payType" onchange="onPayTypeChange()"></select>
+          </div>
+          <div class="field" id="payPeriodWrap" style="display:none;">
+            <label>Period (month)</label>
+            <input type="month" id="payPeriod">
+          </div>
+          <div class="field" id="payDateWrap">
+            <label>Date</label>
+            <input type="date" id="payDate">
+          </div>
+          <div class="field" id="payBeneficiaryWrap" style="display:none;">
+            <label>Donation to (member)</label>
+            <select id="payBeneficiary"></select>
+          </div>
+          <div class="field">
+            <label>Amount (all ticked)</label>
+            <input type="number" id="payBulkAmount" class="amt-input" min="0" step="0.01" placeholder="0.00">
+          </div>
+          <div class="field">
+            <label>Note (optional)</label>
+            <input type="text" id="payNote" placeholder="Optional note" style="min-width:140px;">
+          </div>
+          <button type="button" class="actionBtn" onclick="applyBulkPayments()">Apply to ticked</button>
+        </div>
+
+        <div class="toolbar">
+          <span id="payMemberCount"></span>
+          <div class="toolbar-right">
+            <input type="search" id="paySearch" placeholder="Search member…" oninput="renderPaymentGrid()">
+            <button type="button" class="actionBtn secondary" onclick="selectAllPayRows(true)">Tick all</button>
+            <button type="button" class="actionBtn secondary" onclick="selectAllPayRows(false)">Clear ticks</button>
+          </div>
+        </div>
+
+        <div class="tableScroll">
+          <table>
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="payCheckAll" onchange="selectAllPayRows(this.checked)"></th>
+                <th>Member</th>
+                <th>Branch</th>
+                <th>Phone</th>
+                <th>Amount</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="payGridBody"></tbody>
+          </table>
+        </div>
+        <div id="contribMsg"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Recent payment records</h2>
+        <p class="hint">These appear on each member’s dashboard under Payment history.</p>
+        <div class="toolbar">
+          <span id="payHistoryCount"></span>
+          <button type="button" class="actionBtn secondary" onclick="exportPaymentsJson()">Export payments JSON</button>
+        </div>
+        <div class="tableScroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>Member</th><th>Type</th><th>Amount</th><th>Period / beneficiary</th><th>Note</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="payHistoryBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Executive contacts -->
     <div id="tab-executives" class="tab-panel">
       <div class="panel">
         <h2>Add / edit executive contact</h2>
-        <p class="hint">These details appear on the public Contact page. After saving, download <code>executives.json</code> and upload it with the site files.</p>
+        <p class="hint">Shown on the public Contact page. Download executives.json and upload with the site files.</p>
         <input type="hidden" id="execId">
         <div class="form-row">
           <div>
@@ -225,401 +298,638 @@
         </div>
         <div id="execMsg"></div>
       </div>
-
-      <div class="toolbar">
-        <span id="execCount">0 contact(s)</span>
-      </div>
+      <div class="toolbar"><span id="execCount">0 contact(s)</span></div>
       <div class="tableScroll">
         <table>
-          <thead>
-            <tr>
-              <th>Role</th><th>Name</th><th>Branch</th><th>Phone</th><th>Email</th><th>Action</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Role</th><th>Name</th><th>Branch</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead>
           <tbody id="execBody"></tbody>
         </table>
       </div>
     </div>
   </div>
-
 </div>
 
-<!-- Hidden printable layout -->
 <div id="printArea" aria-hidden="true">
   <h1>Adagbor Descendant Association — Members directory</h1>
   <div class="meta" id="printMeta"></div>
   <table>
     <thead>
-      <tr>
-        <th>#</th>
-        <th>Photo</th>
-        <th>Full name</th>
-        <th>Branch</th>
-        <th>Phone number</th>
-        <th>Home address</th>
-        <th>Status</th>
-      </tr>
+      <tr><th>#</th><th>Photo</th><th>Full name</th><th>Branch</th><th>Phone number</th><th>Home address</th><th>Status</th></tr>
     </thead>
     <tbody id="printBody"></tbody>
   </table>
 </div>
 
 <script>
-  const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
-  const EXEC_KEY = "adagbor_executives";
-  let adminKey = "";
-  let allMembers = [];
+const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+const EXEC_KEY = "adagbor_executives";
+const CONTRIB_TYPES_KEY = "adagbor_contribution_types";
+const CONTRIB_PAY_KEY = "adagbor_contribution_payments";
 
-  function switchTab(name) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
-    if (name === 'executives') renderExecutives();
-    if (name === 'list') renderMembersList();
+const DEFAULT_TYPES = [
+  { id: "registration", name: "Registration fee", kind: "registration", builtin: true },
+  { id: "monthly", name: "Monthly due", kind: "monthly", builtin: true },
+  { id: "donation", name: "Voluntary donation to member", kind: "donation", builtin: true },
+];
+
+let adminKey = "";
+let allMembers = [];
+
+function switchTab(name) {
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
+  if (name === "executives") renderExecutives();
+  if (name === "list") renderMembersList();
+  if (name === "contributions") initContributionsTab();
+}
+
+async function login() {
+  const key = document.getElementById("adminKeyInput").value.trim();
+  if (!key) return;
+  adminKey = key;
+  const ok = await loadMembers();
+  if (ok) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("dashboard").style.display = "block";
+    sessionStorage.setItem("adminKey", adminKey);
+    renderExecutives();
+    renderMembersList();
   }
+}
 
-  async function login() {
-    const key = document.getElementById('adminKeyInput').value.trim();
-    if (!key) return;
-    adminKey = key;
-    const ok = await loadMembers();
-    if (ok) {
-      document.getElementById('loginBox').style.display = 'none';
-      document.getElementById('dashboard').style.display = 'block';
-      sessionStorage.setItem('adminKey', adminKey);
-      renderExecutives();
-      renderMembersList();
-    }
-  }
-
-  async function loadMembers() {
-    const errorEl = document.getElementById('error');
-    errorEl.textContent = '';
-    try {
-      const res = await fetch(`${API_BASE}/api/admin/members`, {
-        headers: { 'X-Admin-Key': adminKey }
-      });
-      if (res.status === 401) {
-        errorEl.textContent = 'Incorrect admin key.';
-        return false;
-      }
-      if (!res.ok) throw new Error('Request failed');
-      const data = await res.json();
-      allMembers = data.members || [];
-      renderMembers(allMembers);
-      renderMembersList();
-      return true;
-    } catch (err) {
-      errorEl.textContent = 'Could not load members. Check your connection and try again.';
+async function loadMembers() {
+  const errorEl = document.getElementById("error");
+  errorEl.textContent = "";
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members`, {
+      headers: { "X-Admin-Key": adminKey }
+    });
+    if (res.status === 401) {
+      errorEl.textContent = "Incorrect admin key.";
       return false;
     }
+    if (!res.ok) throw new Error("Request failed");
+    const data = await res.json();
+    allMembers = data.members || [];
+    renderMembers(allMembers);
+    renderMembersList();
+    return true;
+  } catch (err) {
+    errorEl.textContent = "Could not load members. Check your connection and try again.";
+    return false;
   }
+}
 
-  function renderMembers(members) {
-    document.getElementById('count').textContent = `${members.length} application(s)`;
-    const body = document.getElementById('membersBody');
-    body.innerHTML = '';
-    members.forEach(m => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${m.id}</td>
-        <td>${memberPhoto(m)}</td>
-        <td>${escapeHtml(m.full_name || '')}</td>
-        <td>${escapeHtml(m.gender || '')}</td>
-        <td>${escapeHtml(m.date_of_birth || '')}</td>
-        <td>${escapeHtml(m.branch || '')}</td>
-        <td>${escapeHtml(m.occupation || '')}</td>
-        <td>${escapeHtml(m.phone || '')}</td>
-        <td>${escapeHtml(m.email || '')}</td>
-        <td class="wrap-cell">${escapeHtml(m.address || '')}</td>
-        <td>${escapeHtml(m.next_of_kin_name || '')}</td>
-        <td>${escapeHtml(m.next_of_kin_phone || '')}</td>
-        <td><span class="status ${m.status}">${m.status}</span></td>
-        <td>${escapeHtml(m.submitted_at || '')}</td>
-        <td>
-          <select onchange="updateStatus(${m.id}, this.value)">
-            <option value="">Change...</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-          </select>
-        </td>
-      `;
-      body.appendChild(tr);
-    });
-  }
+function memberPhoto(m) {
+  const src = m.photo || m.photograph || m.avatar || "";
+  if (src) return `<img class="thumb" src="${escapeHtml(src)}" alt="">`;
+  const initial = (m.full_name || "?").trim().charAt(0).toUpperCase();
+  return `<span class="thumb-ph">${escapeHtml(initial)}</span>`;
+}
 
-  function filteredMembers() {
-    const filter = document.getElementById('listFilter')?.value || 'approved';
-    if (filter === 'all') return allMembers.slice();
-    return allMembers.filter(m => (m.status || '').toLowerCase() === filter);
-  }
+function memberKey(m) {
+  return String(m.id != null ? m.id : (m.phone || m.email || m.full_name || "")).trim();
+}
 
-  function renderMembersList() {
-    const list = filteredMembers();
-    document.getElementById('listCount').textContent = `${list.length} member(s)`;
-    const body = document.getElementById('membersListBody');
-    body.innerHTML = '';
-    if (!list.length) {
-      body.innerHTML = '<tr><td colspan="7" style="color:#888;">No members match this filter.</td></tr>';
-      return;
-    }
-    list.forEach((m, i) => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${i + 1}</td>
-        <td>${memberPhoto(m)}</td>
-        <td>${escapeHtml(m.full_name || '')}</td>
-        <td>${escapeHtml(m.branch || '')}</td>
-        <td>${escapeHtml(m.phone || '')}</td>
-        <td class="wrap-cell">${escapeHtml(m.address || '')}</td>
-        <td><span class="status ${m.status || ''}">${escapeHtml(m.status || '')}</span></td>
-      `;
-      body.appendChild(tr);
-    });
-  }
+function escapeHtml(str) {
+  return String(str == null ? "" : str).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
 
-  function buildPrintTable() {
-    const list = filteredMembers();
-    const filter = document.getElementById('listFilter').value;
-    const label = filter === 'all' ? 'All statuses' : filter.charAt(0).toUpperCase() + filter.slice(1);
-    const now = new Date().toLocaleString();
-    document.getElementById('printMeta').textContent =
-      `Filter: ${label} · ${list.length} member(s) · Generated ${now} · Ancestral home: Ugbedu, Kogi State`;
-    const body = document.getElementById('printBody');
-    body.innerHTML = list.map((m, i) => {
-      const src = m.photo || m.photograph || m.avatar || '';
-      const photoCell = src
-        ? `<img src="${escapeHtml(src)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
-        : '—';
-      return `
-      <tr>
-        <td>${i + 1}</td>
-        <td>${photoCell}</td>
-        <td>${escapeHtml(m.full_name || '')}</td>
-        <td>${escapeHtml(m.branch || '')}</td>
-        <td>${escapeHtml(m.phone || '')}</td>
-        <td>${escapeHtml(m.address || '')}</td>
-        <td>${escapeHtml(m.status || '')}</td>
-      </tr>`;
-    }).join('');
-  }
-
-  function printMembersList() {
-    buildPrintTable();
-    window.print();
-  }
-
-  function downloadMembersPdf() {
-    const list = filteredMembers();
-    if (!list.length) {
-      alert('No members to export for this filter.');
-      return;
-    }
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      alert('PDF library failed to load. Check your connection and try again, or use Print.');
-      return;
-    }
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
-    const filter = document.getElementById('listFilter').value;
-    const label = filter === 'all' ? 'All statuses' : filter.charAt(0).toUpperCase() + filter.slice(1);
-    const now = new Date().toLocaleString();
-
-    doc.setFontSize(14);
-    doc.setTextColor(30, 77, 43);
-    doc.text('Adagbor Descendant Association — Members directory', 40, 36);
-    doc.setFontSize(9);
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Filter: ${label}  |  ${list.length} member(s)  |  Generated ${now}`, 40, 52);
-    doc.text('Ancestral home: Ugbedu, Kogi State  ·  Branches: Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji & others', 40, 64);
-
-    const rows = list.map((m, i) => [
-      String(i + 1),
-      m.full_name || '',
-      m.branch || '',
-      m.phone || '',
-      m.address || '',
-      m.status || ''
-    ]);
-
-    doc.autoTable({
-      startY: 76,
-      head: [['#', 'Full name', 'Branch', 'Phone number', 'Home address', 'Status']],  /* photos shown on screen list */
-      body: rows,
-      styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
-      headStyles: { fillColor: [30, 77, 43], textColor: 255, fontStyle: 'bold' },
-      columnStyles: {
-        0: { cellWidth: 28 },
-        1: { cellWidth: 120 },
-        2: { cellWidth: 70 },
-        3: { cellWidth: 90 },
-        4: { cellWidth: 'auto' },
-        5: { cellWidth: 55 }
-      },
-      margin: { left: 40, right: 40 }
-    });
-
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(120);
-      doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() - 40, doc.internal.pageSize.getHeight() - 20, { align: 'right' });
-    }
-
-    const stamp = new Date().toISOString().slice(0, 10);
-    doc.save(`adagbor-members-directory-${stamp}.pdf`);
-  }
-
-  async function updateStatus(id, status) {
-    if (!status) return;
-    try {
-      await fetch(`${API_BASE}/api/admin/members`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
-        body: JSON.stringify({ id, status })
-      });
-      loadMembers();
-    } catch (err) {
-      alert('Failed to update status.');
-    }
-  }
-
-
-  function memberPhoto(m) {
-    const src = m.photo || m.photograph || m.avatar || '';
-    if (src) return `<img class="thumb" src="${escapeHtml(src)}" alt="">`;
-    const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
-    return `<span class="thumb-ph">${escapeHtml(initial)}</span>`;
-  }
-
-  function escapeHtml(str) {
-    return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({
-      '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
-    }[c]));
-  }
-
-  /* ---- Executive contacts ---- */
-
-  function getExecutives() {
-    try {
-      const raw = localStorage.getItem(EXEC_KEY);
-      if (!raw) return [];
-      const list = JSON.parse(raw);
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
-  }
-
-  function setExecutives(list) {
-    localStorage.setItem(EXEC_KEY, JSON.stringify(list));
-  }
-
-  function clearExecForm() {
-    document.getElementById('execId').value = '';
-    document.getElementById('execRole').value = 'President';
-    document.getElementById('execBranch').value = '';
-    document.getElementById('execName').value = '';
-    document.getElementById('execPhone').value = '';
-    document.getElementById('execEmail').value = '';
-    document.getElementById('execMsg').textContent = '';
-  }
-
-  function saveExecutive() {
-    const id = document.getElementById('execId').value;
-    const entry = {
-      id: id || String(Date.now()),
-      role: document.getElementById('execRole').value.trim(),
-      name: document.getElementById('execName').value.trim(),
-      branch: document.getElementById('execBranch').value.trim(),
-      phone: document.getElementById('execPhone').value.trim(),
-      email: document.getElementById('execEmail').value.trim()
-    };
-    if (!entry.name) {
-      const msg = document.getElementById('execMsg');
-      msg.textContent = 'Name is required.';
-      msg.className = 'err';
-      return;
-    }
-    let list = getExecutives();
-    const idx = list.findIndex(e => e.id === entry.id);
-    if (idx >= 0) list[idx] = entry;
-    else list.push(entry);
-    setExecutives(list);
-    clearExecForm();
-    renderExecutives();
-    const msg = document.getElementById('execMsg');
-    msg.textContent = 'Saved. Download executives.json and upload it with the site so the Contact page stays up to date.';
-    msg.className = '';
-  }
-
-  function editExecutive(id) {
-    const e = getExecutives().find(x => x.id === id);
-    if (!e) return;
-    document.getElementById('execId').value = e.id;
-    document.getElementById('execRole').value = e.role || 'President';
-    document.getElementById('execBranch').value = e.branch || '';
-    document.getElementById('execName').value = e.name || '';
-    document.getElementById('execPhone').value = e.phone || '';
-    document.getElementById('execEmail').value = e.email || '';
-    switchTab('executives');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  function deleteExecutive(id) {
-    if (!confirm('Remove this contact?')) return;
-    setExecutives(getExecutives().filter(e => e.id !== id));
-    renderExecutives();
-  }
-
-  function renderExecutives() {
-    const list = getExecutives();
-    document.getElementById('execCount').textContent = `${list.length} contact(s)`;
-    const body = document.getElementById('execBody');
-    body.innerHTML = '';
-    if (!list.length) {
-      body.innerHTML = '<tr><td colspan="6" style="color:#888;">No executive contacts yet. Add them using the form above.</td></tr>';
-      return;
-    }
-    list.forEach(e => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${escapeHtml(e.role || '')}</td>
-        <td>${escapeHtml(e.name || '')}</td>
-        <td>${escapeHtml(e.branch || '')}</td>
-        <td>${escapeHtml(e.phone || '')}</td>
-        <td>${escapeHtml(e.email || '')}</td>
-        <td>
-          <button type="button" class="actionBtn secondary" onclick="editExecutive('${escapeHtml(e.id)}')">Edit</button>
-          <button type="button" class="actionBtn danger" onclick="deleteExecutive('${escapeHtml(e.id)}')">Delete</button>
-        </td>
-      `;
-      body.appendChild(tr);
-    });
-  }
-
-  function downloadExecutivesJson() {
-    const list = getExecutives();
-    const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'executives.json';
-    a.click();
-    URL.revokeObjectURL(a.href);
-    const msg = document.getElementById('execMsg');
-    msg.textContent = 'Downloaded. Upload executives.json into the same folder as contact.html on your host.';
-    msg.className = '';
-  }
-
-  window.addEventListener('DOMContentLoaded', () => {
-    const stored = sessionStorage.getItem('adminKey');
-    if (stored) {
-      document.getElementById('adminKeyInput').value = stored;
-      login();
-    }
+function renderMembers(members) {
+  document.getElementById("count").textContent = `${members.length} application(s)`;
+  const body = document.getElementById("membersBody");
+  body.innerHTML = "";
+  members.forEach(m => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${m.id}</td>
+      <td>${memberPhoto(m)}</td>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.gender || "")}</td>
+      <td>${escapeHtml(m.date_of_birth || "")}</td>
+      <td>${escapeHtml(m.branch || "")}</td>
+      <td>${escapeHtml(m.occupation || "")}</td>
+      <td>${escapeHtml(m.phone || "")}</td>
+      <td>${escapeHtml(m.email || "")}</td>
+      <td class="wrap-cell">${escapeHtml(m.address || "")}</td>
+      <td>${escapeHtml(m.next_of_kin_name || "")}</td>
+      <td>${escapeHtml(m.next_of_kin_phone || "")}</td>
+      <td><span class="status ${m.status}">${m.status}</span></td>
+      <td>${escapeHtml(m.submitted_at || "")}</td>
+      <td>
+        <select onchange="updateStatus(${m.id}, this.value)">
+          <option value="">Change...</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </td>`;
+    body.appendChild(tr);
   });
-</script>
+}
 
+function filteredMembers() {
+  const filter = document.getElementById("listFilter")?.value || "approved";
+  if (filter === "all") return allMembers.slice();
+  return allMembers.filter(m => (m.status || "").toLowerCase() === filter);
+}
+
+function renderMembersList() {
+  const list = filteredMembers();
+  document.getElementById("listCount").textContent = `${list.length} member(s)`;
+  const body = document.getElementById("membersListBody");
+  body.innerHTML = "";
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No members match this filter.</td></tr>';
+    return;
+  }
+  list.forEach((m, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${memberPhoto(m)}</td>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.branch || "")}</td>
+      <td>${escapeHtml(m.phone || "")}</td>
+      <td class="wrap-cell">${escapeHtml(m.address || "")}</td>
+      <td><span class="status ${m.status || ""}">${escapeHtml(m.status || "")}</span></td>`;
+    body.appendChild(tr);
+  });
+}
+
+function buildPrintTable() {
+  const list = filteredMembers();
+  const filter = document.getElementById("listFilter").value;
+  const label = filter === "all" ? "All statuses" : filter.charAt(0).toUpperCase() + filter.slice(1);
+  document.getElementById("printMeta").textContent =
+    `Filter: ${label} · ${list.length} member(s) · Generated ${new Date().toLocaleString()} · Ugbedu, Kogi State`;
+  document.getElementById("printBody").innerHTML = list.map((m, i) => {
+    const src = m.photo || m.photograph || m.avatar || "";
+    const photoCell = src
+      ? `<img src="${escapeHtml(src)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;">`
+      : "—";
+    return `<tr>
+      <td>${i + 1}</td><td>${photoCell}</td>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.branch || "")}</td>
+      <td>${escapeHtml(m.phone || "")}</td>
+      <td>${escapeHtml(m.address || "")}</td>
+      <td>${escapeHtml(m.status || "")}</td></tr>`;
+  }).join("");
+}
+
+function printMembersList() {
+  buildPrintTable();
+  window.print();
+}
+
+function downloadMembersPdf() {
+  const list = filteredMembers();
+  if (!list.length) { alert("No members to export."); return; }
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library failed to load. Use Print instead.");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const filter = document.getElementById("listFilter").value;
+  const label = filter === "all" ? "All statuses" : filter.charAt(0).toUpperCase() + filter.slice(1);
+  doc.setFontSize(14);
+  doc.setTextColor(30, 77, 43);
+  doc.text("Adagbor Descendant Association — Members directory", 40, 36);
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  doc.text(`Filter: ${label}  |  ${list.length} member(s)  |  ${new Date().toLocaleString()}`, 40, 52);
+  doc.autoTable({
+    startY: 68,
+    head: [["#", "Full name", "Branch", "Phone number", "Home address", "Status"]],
+    body: list.map((m, i) => [
+      String(i + 1), m.full_name || "", m.branch || "", m.phone || "", m.address || "", m.status || ""
+    ]),
+    styles: { fontSize: 8, cellPadding: 4, overflow: "linebreak" },
+    headStyles: { fillColor: [30, 77, 43], textColor: 255 },
+    margin: { left: 40, right: 40 }
+  });
+  doc.save(`adagbor-members-directory-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+async function updateStatus(id, status) {
+  if (!status) return;
+  try {
+    await fetch(`${API_BASE}/api/admin/members`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+      body: JSON.stringify({ id, status })
+    });
+    loadMembers();
+  } catch (err) {
+    alert("Failed to update status.");
+  }
+}
+
+/* ---- Contributions ---- */
+
+function getTypes() {
+  try {
+    const raw = localStorage.getItem(CONTRIB_TYPES_KEY);
+    let custom = raw ? JSON.parse(raw) : [];
+    if (!Array.isArray(custom)) custom = [];
+    const ids = new Set(DEFAULT_TYPES.map(t => t.id));
+    custom = custom.filter(t => t && t.id && !ids.has(t.id));
+    return DEFAULT_TYPES.concat(custom);
+  } catch (e) {
+    return DEFAULT_TYPES.slice();
+  }
+}
+
+function saveCustomTypes(customOnly) {
+  localStorage.setItem(CONTRIB_TYPES_KEY, JSON.stringify(customOnly));
+}
+
+function getPayments() {
+  try {
+    const raw = localStorage.getItem(CONTRIB_PAY_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function setPayments(list) {
+  localStorage.setItem(CONTRIB_PAY_KEY, JSON.stringify(list));
+}
+
+function approvedAlphabetical() {
+  return allMembers
+    .filter(m => (m.status || "").toLowerCase() === "approved" || !m.status)
+    .slice()
+    .sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || ""), undefined, { sensitivity: "base" }));
+}
+
+function initContributionsTab() {
+  renderTypeChips();
+  fillPayTypeSelect();
+  fillBeneficiarySelect();
+  const today = new Date().toISOString().slice(0, 10);
+  const month = new Date().toISOString().slice(0, 7);
+  if (!document.getElementById("payDate").value) document.getElementById("payDate").value = today;
+  if (!document.getElementById("payPeriod").value) document.getElementById("payPeriod").value = month;
+  onPayTypeChange();
+  renderPaymentGrid();
+  renderPayHistory();
+}
+
+function renderTypeChips() {
+  const el = document.getElementById("typeChips");
+  el.innerHTML = getTypes().map(t => {
+    const del = t.builtin
+      ? ""
+      : `<button type="button" title="Remove" onclick="removeContributionType('${escapeHtml(t.id)}')">×</button>`;
+    return `<span class="chip">${escapeHtml(t.name)}${del}</span>`;
+  }).join("");
+}
+
+function addContributionType() {
+  const name = document.getElementById("newTypeName").value.trim();
+  if (!name) return;
+  const id = "custom_" + Date.now();
+  const custom = getTypes().filter(t => !t.builtin);
+  custom.push({ id, name, kind: "custom", builtin: false });
+  saveCustomTypes(custom);
+  document.getElementById("newTypeName").value = "";
+  renderTypeChips();
+  fillPayTypeSelect();
+  setContribMsg("Contribution type added.");
+}
+
+function removeContributionType(id) {
+  if (!confirm("Remove this contribution type?")) return;
+  saveCustomTypes(getTypes().filter(t => !t.builtin && t.id !== id));
+  renderTypeChips();
+  fillPayTypeSelect();
+}
+
+function fillPayTypeSelect() {
+  const sel = document.getElementById("payType");
+  const cur = sel.value;
+  sel.innerHTML = getTypes().map(t =>
+    `<option value="${escapeHtml(t.id)}" data-kind="${escapeHtml(t.kind)}">${escapeHtml(t.name)}</option>`
+  ).join("");
+  if (cur && [...sel.options].some(o => o.value === cur)) sel.value = cur;
+}
+
+function fillBeneficiarySelect() {
+  const sel = document.getElementById("payBeneficiary");
+  const members = approvedAlphabetical();
+  sel.innerHTML = '<option value="">Select member</option>' + members.map(m =>
+    `<option value="${escapeHtml(memberKey(m))}">${escapeHtml(m.full_name || "")}${m.branch ? " · " + escapeHtml(m.branch) : ""}</option>`
+  ).join("");
+}
+
+function currentType() {
+  const id = document.getElementById("payType").value;
+  return getTypes().find(t => t.id === id) || DEFAULT_TYPES[0];
+}
+
+function onPayTypeChange() {
+  const t = currentType();
+  document.getElementById("payPeriodWrap").style.display = t.kind === "monthly" ? "flex" : "none";
+  document.getElementById("payBeneficiaryWrap").style.display = t.kind === "donation" ? "flex" : "none";
+}
+
+function renderPaymentGrid() {
+  const q = (document.getElementById("paySearch").value || "").trim().toLowerCase();
+  let members = approvedAlphabetical();
+  if (q) {
+    members = members.filter(m =>
+      (m.full_name || "").toLowerCase().includes(q) ||
+      (m.branch || "").toLowerCase().includes(q) ||
+      (m.phone || "").toLowerCase().includes(q)
+    );
+  }
+  document.getElementById("payMemberCount").textContent = `${members.length} member(s) (alphabetical)`;
+  const body = document.getElementById("payGridBody");
+  if (!members.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#888;">No approved members to list.</td></tr>';
+    return;
+  }
+  body.innerHTML = members.map(m => {
+    const key = memberKey(m);
+    return `<tr data-key="${escapeHtml(key)}">
+      <td><input type="checkbox" class="pay-check" value="${escapeHtml(key)}"></td>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.branch || "")}</td>
+      <td>${escapeHtml(m.phone || "")}</td>
+      <td><input type="number" class="amt-input row-amt" min="0" step="0.01" placeholder="0.00" data-key="${escapeHtml(key)}"></td>
+      <td><button type="button" class="actionBtn secondary" onclick="saveRowPayment('${escapeHtml(key)}')">Save</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function selectAllPayRows(checked) {
+  document.querySelectorAll(".pay-check").forEach(c => { c.checked = !!checked; });
+  const all = document.getElementById("payCheckAll");
+  if (all) all.checked = !!checked;
+}
+
+function paymentMeta() {
+  const t = currentType();
+  const date = document.getElementById("payDate").value || new Date().toISOString().slice(0, 10);
+  const period = document.getElementById("payPeriod").value || "";
+  const beneficiaryKey = document.getElementById("payBeneficiary").value || "";
+  const beneficiaryName = beneficiaryKey
+    ? (document.getElementById("payBeneficiary").selectedOptions[0]?.textContent || "")
+    : "";
+  const note = document.getElementById("payNote").value.trim();
+  if (t.kind === "donation" && !beneficiaryKey) {
+    return { error: "Select the member receiving the voluntary donation." };
+  }
+  if (t.kind === "monthly" && !period) {
+    return { error: "Select the month for monthly due." };
+  }
+  return { type: t, date, period, beneficiaryKey, beneficiaryName, note };
+}
+
+function findMemberByKey(key) {
+  return allMembers.find(m => memberKey(m) === String(key));
+}
+
+function addPaymentRecords(entries) {
+  const list = getPayments();
+  entries.forEach(e => list.push(e));
+  setPayments(list);
+  renderPayHistory();
+}
+
+function saveRowPayment(key) {
+  const input = document.querySelector(`.row-amt[data-key="${CSS.escape(key)}"]`);
+  const amount = parseFloat(input && input.value);
+  if (!(amount > 0)) {
+    setContribMsg("Enter an amount greater than zero.", true);
+    return;
+  }
+  const meta = paymentMeta();
+  if (meta.error) { setContribMsg(meta.error, true); return; }
+  const m = findMemberByKey(key);
+  if (!m) { setContribMsg("Member not found.", true); return; }
+  addPaymentRecords([{
+    id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+    memberKey: key,
+    memberName: m.full_name || "",
+    memberPhone: m.phone || "",
+    memberId: m.id != null ? m.id : null,
+    typeId: meta.type.id,
+    typeName: meta.type.name,
+    kind: meta.type.kind,
+    amount: amount,
+    date: meta.date,
+    period: meta.period,
+    beneficiaryKey: meta.beneficiaryKey,
+    beneficiaryName: meta.beneficiaryName,
+    note: meta.note,
+    createdAt: new Date().toISOString()
+  }]);
+  input.value = "";
+  setContribMsg(`Saved ${meta.type.name} of ${amount.toLocaleString()} for ${m.full_name}.`);
+}
+
+function applyBulkPayments() {
+  const checked = [...document.querySelectorAll(".pay-check:checked")].map(c => c.value);
+  if (!checked.length) {
+    setContribMsg("Tick at least one member.", true);
+    return;
+  }
+  const bulkAmt = parseFloat(document.getElementById("payBulkAmount").value);
+  const meta = paymentMeta();
+  if (meta.error) { setContribMsg(meta.error, true); return; }
+
+  const entries = [];
+  for (const key of checked) {
+    const rowInput = document.querySelector(`.row-amt[data-key="${CSS.escape(key)}"]`);
+    let amount = parseFloat(rowInput && rowInput.value);
+    if (!(amount > 0)) amount = bulkAmt;
+    if (!(amount > 0)) continue;
+    const m = findMemberByKey(key);
+    if (!m) continue;
+    entries.push({
+      id: "p_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7) + "_" + key,
+      memberKey: key,
+      memberName: m.full_name || "",
+      memberPhone: m.phone || "",
+      memberId: m.id != null ? m.id : null,
+      typeId: meta.type.id,
+      typeName: meta.type.name,
+      kind: meta.type.kind,
+      amount: amount,
+      date: meta.date,
+      period: meta.period,
+      beneficiaryKey: meta.beneficiaryKey,
+      beneficiaryName: meta.beneficiaryName,
+      note: meta.note,
+      createdAt: new Date().toISOString()
+    });
+  }
+  if (!entries.length) {
+    setContribMsg("Enter a bulk amount or per-row amounts greater than zero.", true);
+    return;
+  }
+  addPaymentRecords(entries);
+  document.querySelectorAll(".row-amt").forEach(i => { i.value = ""; });
+  document.getElementById("payBulkAmount").value = "";
+  selectAllPayRows(false);
+  setContribMsg(`Recorded ${entries.length} payment(s) for ${meta.type.name}.`);
+}
+
+function renderPayHistory() {
+  const list = getPayments().slice().sort((a, b) => String(b.date).localeCompare(String(a.date)) || String(b.createdAt).localeCompare(String(a.createdAt)));
+  document.getElementById("payHistoryCount").textContent = `${list.length} record(s)`;
+  const body = document.getElementById("payHistoryBody");
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No payments recorded yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.slice(0, 200).map(p => {
+    let extra = "";
+    if (p.kind === "monthly" && p.period) extra = p.period;
+    if (p.kind === "donation" && p.beneficiaryName) extra = "To: " + p.beneficiaryName;
+    return `<tr>
+      <td>${escapeHtml(p.date || "")}</td>
+      <td>${escapeHtml(p.memberName || "")}</td>
+      <td>${escapeHtml(p.typeName || "")}</td>
+      <td>${Number(p.amount || 0).toLocaleString()}</td>
+      <td>${escapeHtml(extra)}</td>
+      <td class="wrap-cell">${escapeHtml(p.note || "")}</td>
+      <td><button type="button" class="actionBtn danger" onclick="deletePayment('${escapeHtml(p.id)}')">Delete</button></td>
+    </tr>`;
+  }).join("");
+}
+
+function deletePayment(id) {
+  if (!confirm("Delete this payment record?")) return;
+  setPayments(getPayments().filter(p => p.id !== id));
+  renderPayHistory();
+  setContribMsg("Payment deleted.");
+}
+
+function exportPaymentsJson() {
+  const blob = new Blob([JSON.stringify(getPayments(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "adagbor-payments.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function setContribMsg(text, isErr) {
+  const el = document.getElementById("contribMsg");
+  el.textContent = text || "";
+  el.className = isErr ? "err" : "";
+}
+
+/* ---- Executives ---- */
+
+function getExecutives() {
+  try {
+    const raw = localStorage.getItem(EXEC_KEY);
+    if (!raw) return [];
+    const list = JSON.parse(raw);
+    return Array.isArray(list) ? list : [];
+  } catch (e) { return []; }
+}
+function setExecutives(list) { localStorage.setItem(EXEC_KEY, JSON.stringify(list)); }
+
+function clearExecForm() {
+  document.getElementById("execId").value = "";
+  document.getElementById("execRole").value = "President";
+  document.getElementById("execBranch").value = "";
+  document.getElementById("execName").value = "";
+  document.getElementById("execPhone").value = "";
+  document.getElementById("execEmail").value = "";
+  document.getElementById("execMsg").textContent = "";
+}
+
+function saveExecutive() {
+  const id = document.getElementById("execId").value;
+  const entry = {
+    id: id || String(Date.now()),
+    role: document.getElementById("execRole").value.trim(),
+    name: document.getElementById("execName").value.trim(),
+    branch: document.getElementById("execBranch").value.trim(),
+    phone: document.getElementById("execPhone").value.trim(),
+    email: document.getElementById("execEmail").value.trim()
+  };
+  if (!entry.name) {
+    document.getElementById("execMsg").textContent = "Name is required.";
+    document.getElementById("execMsg").className = "err";
+    return;
+  }
+  let list = getExecutives();
+  const idx = list.findIndex(e => e.id === entry.id);
+  if (idx >= 0) list[idx] = entry; else list.push(entry);
+  setExecutives(list);
+  clearExecForm();
+  renderExecutives();
+  document.getElementById("execMsg").textContent = "Saved. Download executives.json to publish.";
+  document.getElementById("execMsg").className = "";
+}
+
+function editExecutive(id) {
+  const e = getExecutives().find(x => x.id === id);
+  if (!e) return;
+  document.getElementById("execId").value = e.id;
+  document.getElementById("execRole").value = e.role || "President";
+  document.getElementById("execBranch").value = e.branch || "";
+  document.getElementById("execName").value = e.name || "";
+  document.getElementById("execPhone").value = e.phone || "";
+  document.getElementById("execEmail").value = e.email || "";
+  switchTab("executives");
+}
+
+function deleteExecutive(id) {
+  if (!confirm("Remove this contact?")) return;
+  setExecutives(getExecutives().filter(e => e.id !== id));
+  renderExecutives();
+}
+
+function renderExecutives() {
+  const list = getExecutives();
+  document.getElementById("execCount").textContent = `${list.length} contact(s)`;
+  const body = document.getElementById("execBody");
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="6" style="color:#888;">No executive contacts yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(e => `<tr>
+    <td>${escapeHtml(e.role || "")}</td>
+    <td>${escapeHtml(e.name || "")}</td>
+    <td>${escapeHtml(e.branch || "")}</td>
+    <td>${escapeHtml(e.phone || "")}</td>
+    <td>${escapeHtml(e.email || "")}</td>
+    <td>
+      <button type="button" class="actionBtn secondary" onclick="editExecutive('${escapeHtml(e.id)}')">Edit</button>
+      <button type="button" class="actionBtn danger" onclick="deleteExecutive('${escapeHtml(e.id)}')">Delete</button>
+    </td></tr>`).join("");
+}
+
+function downloadExecutivesJson() {
+  const blob = new Blob([JSON.stringify(getExecutives(), null, 2)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "executives.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  const stored = sessionStorage.getItem("adminKey");
+  if (stored) {
+    document.getElementById("adminKeyInput").value = stored;
+    login();
+  }
+});
+</script>
 </body>
 </html>
