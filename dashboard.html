@@ -123,6 +123,26 @@
     font-size: 28px;
     color: #a89b6e;
   }
+  .photo-wrap { position: relative; flex-shrink: 0; }
+  .photo-edit-btn {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #5a4a1f;
+    border: 2px solid #fff;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+  }
+  .photo-edit-btn:hover { background: #4a3f22; }
+  .photo-edit-btn svg { width: 14px; height: 14px; }
+  #photoStatus { font-size: 0.78rem; margin: 6px 0 0; color: #7a6f4f; min-height: 1em; }
   .profile-name { font-size: 1.15rem; font-weight: bold; color: #4a3f22; margin: 0 0 4px; }
   .profile-meta { font-size: 0.9rem; color: #7a6f4f; margin: 0; }
   .row { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #eee6d0; }
@@ -347,6 +367,75 @@ function escapeHtml(str) {
   }[c]));
 }
 
+function fileToResizedDataUrl(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Could not read that file.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('That file is not a readable image.'));
+      img.onload = () => {
+        let width = img.width, height = img.height;
+        if (width > maxSize || height > maxSize) {
+          if (width > height) { height = Math.round(height * (maxSize / width)); width = maxSize; }
+          else { width = Math.round(width * (maxSize / height)); height = maxSize; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handlePhotoSelect(event) {
+  const input = event.target;
+  const file = input.files && input.files[0];
+  input.value = '';
+  if (!file) return;
+  const statusEl = document.getElementById('photoStatus');
+  if (!file.type || !file.type.startsWith('image/')) {
+    if (statusEl) { statusEl.style.color = '#a33'; statusEl.textContent = 'Please choose an image file.'; }
+    return;
+  }
+  if (statusEl) { statusEl.style.color = '#7a6f4f'; statusEl.textContent = 'Uploading photo…'; }
+  try {
+    const dataUrl = await fileToResizedDataUrl(file, 480, 0.82);
+    const res = await fetch(`${API_BASE}/api/member/me`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ photo: dataUrl })
+    });
+    if (res.status === 401) {
+      window.location.href = 'login.html';
+      return;
+    }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Upload failed. Please try again.');
+
+    if (currentMember) currentMember.photo = dataUrl;
+    const img = document.getElementById('avatarImg');
+    const ph = document.getElementById('avatarPh');
+    if (img) { img.src = dataUrl; img.style.display = ''; }
+    if (ph) ph.style.display = 'none';
+    // Keep the directory in sync if it's already loaded, so switching tabs shows the new photo.
+    if (directoryMembers.length && currentMember) {
+      directoryMembers.forEach(dm => {
+        if (dm.full_name === currentMember.full_name && dm.phone === currentMember.phone) dm.photo = dataUrl;
+      });
+    }
+    if (statusEl) { statusEl.style.color = '#1e4d2b'; statusEl.textContent = 'Photo updated.'; }
+    setTimeout(() => { if (statusEl && statusEl.textContent === 'Photo updated.') statusEl.textContent = ''; }, 3000);
+  } catch (err) {
+    if (statusEl) { statusEl.style.color = '#a33'; statusEl.textContent = err.message || 'Could not upload photo.'; }
+  }
+}
+
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
   document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + name));
@@ -383,10 +472,6 @@ async function loadMe() {
     const photo = m.photo || m.photograph || m.avatar || '';
     const initial = (m.full_name || '?').trim().charAt(0).toUpperCase();
 
-    const photoHtml = photo
-      ? `<img class="profile-photo" src="${escapeHtml(photo)}" alt="Membership photo">`
-      : `<div class="profile-photo placeholder" aria-hidden="true">${escapeHtml(initial)}</div>`;
-
     const rows = [
       ["Full name", m.full_name],
       ["Gender", m.gender],
@@ -405,10 +490,18 @@ async function loadMe() {
 
     fields.innerHTML = `
       <div class="profile-head">
-        ${photoHtml}
+        <div class="photo-wrap">
+          <img id="avatarImg" class="profile-photo" src="${escapeHtml(photo)}" alt="Membership photo" style="${photo ? '' : 'display:none'}">
+          <div id="avatarPh" class="profile-photo placeholder" aria-hidden="true" style="${photo ? 'display:none' : ''}">${escapeHtml(initial)}</div>
+          <button type="button" class="photo-edit-btn" onclick="document.getElementById('photoInput').click()" title="Change photo" aria-label="Change photo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-2h6l2 2h3v13H4z"/><circle cx="12" cy="13.5" r="3.5"/></svg>
+          </button>
+          <input type="file" id="photoInput" accept="image/*" style="display:none" onchange="handlePhotoSelect(event)">
+        </div>
         <div>
           <p class="profile-name">${escapeHtml(m.full_name || 'Member')}</p>
           <p class="profile-meta">${escapeHtml(m.branch || '')}${m.status ? ' · ' + escapeHtml(m.status) : ''}</p>
+          <p id="photoStatus"></p>
         </div>
       </div>
       ${rows}

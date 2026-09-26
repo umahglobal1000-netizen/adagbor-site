@@ -48,19 +48,12 @@
   #execMsg, #contribMsg { font-size: 13px; margin-top: 10px; color: #155724; }
   #execMsg.err, #contribMsg.err { color: #b00020; }
   .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #e0d8c0; flex-wrap: wrap; }
-  .tab { display: inline-flex; align-items: center; gap: 7px; padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; }
+  .tab { padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; }
   .tab.active { color: #1e4d2b; border-bottom-color: #1e4d2b; font-weight: 600; }
-  .tab-icon { width: 16px; height: 16px; flex: none; opacity: .8; }
-  .tab.active .tab-icon { opacity: 1; }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
   .thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; background: #f0ece1; vertical-align: middle; }
   .thumb-ph { display: inline-flex; width: 40px; height: 40px; border-radius: 50%; align-items: center; justify-content: center; background: #f0ece1; color: #888; font-size: 14px; font-weight: 600; vertical-align: middle; }
-  .photo-field { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
-  .photo-field .thumb, .photo-field .thumb-ph { width: 64px; height: 64px; font-size: 20px; }
-  .photo-input-wrap { flex: 1; min-width: 180px; }
-  .photo-input-wrap input[type=file] { font-size: 13px; padding: 6px 0; }
-  .photo-hint { font-size: 12px; color: #666; margin: 6px 0 0; }
   .total-card {
     background: #f5f2e8; border: 1px solid #e0d8c0; border-radius: 8px; padding: 14px 16px;
   }
@@ -84,6 +77,31 @@
   @media (max-width: 640px) {
     .form-row, .form-row.three { grid-template-columns: 1fr; }
   }
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 50;
+    align-items: flex-start;
+    justify-content: center;
+    overflow-y: auto;
+    padding: 30px 16px;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 8px;
+    padding: 24px;
+    max-width: 640px;
+    width: 100%;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+  }
+  .modal-box h2 { margin: 0 0 14px; font-size: 17px; }
+  .modal-photo-row { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+  .modal-photo-row .thumb, .modal-photo-row .thumb-ph { width: 64px; height: 64px; }
+  #memberEditMsg { font-size: 13px; margin-top: 10px; color: #155724; }
+  #memberEditMsg.err { color: #b00020; }
 </style>
 <script src="data-sync.js"></script>
 </head>
@@ -105,13 +123,13 @@
 
   <div id="dashboard" style="display:none;">
     <div class="tabs">
-      <button type="button" class="tab active" data-tab="members" onclick="switchTab('members')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg>Applications</button>
-      <button type="button" class="tab" data-tab="list" onclick="switchTab('list')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Members directory</button>
-      <button type="button" class="tab" data-tab="contributions" onclick="switchTab('contributions')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/><circle cx="12" cy="14" r="2"/></svg>Contributions</button>
-      <button type="button" class="tab" data-tab="attendance" onclick="switchTab('attendance')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><polyline points="9 15 11 17 15 13"/></svg>Attendance</button>
-      <button type="button" class="tab" data-tab="resolutions" onclick="switchTab('resolutions')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 12.5-8 8a2.12 2.12 0 1 1-3-3l8-8"/><path d="m16 16 6-6"/><path d="m8 8 6-6"/><path d="m9 7 8 8"/><path d="m21 11-8-8"/></svg>Resolutions</button>
-      <button type="button" class="tab" data-tab="announcements" onclick="switchTab('announcements')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11v3a1 1 0 0 0 1 1h2l3.5 5V5.5L6 10H4a1 1 0 0 0-1 1z"/><path d="M14 8a4 4 0 0 1 0 8"/><path d="M17.5 5a8 8 0 0 1 0 14"/></svg>Announcements</button>
-      <button type="button" class="tab" data-tab="executives" onclick="switchTab('executives')"><svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="10" r="3"/><path d="M8 17c0-2 2-3 4-3s4 1 4 3"/></svg>Executive contacts</button>
+      <button type="button" class="tab active" data-tab="members" onclick="switchTab('members')">Applications</button>
+      <button type="button" class="tab" data-tab="list" onclick="switchTab('list')">Members directory</button>
+      <button type="button" class="tab" data-tab="contributions" onclick="switchTab('contributions')">Contributions</button>
+      <button type="button" class="tab" data-tab="attendance" onclick="switchTab('attendance')">Attendance</button>
+      <button type="button" class="tab" data-tab="resolutions" onclick="switchTab('resolutions')">Resolutions</button>
+      <button type="button" class="tab" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
+      <button type="button" class="tab" data-tab="executives" onclick="switchTab('executives')">Executive contacts</button>
     </div>
 
     <!-- Applications -->
@@ -154,7 +172,7 @@
         <table id="membersListTable">
           <thead>
             <tr>
-              <th>#</th><th>Photo</th><th>Full name</th><th>Branch</th><th>Phone number</th><th>Home address</th><th>Status</th>
+              <th>#</th><th>Photo</th><th>Full name</th><th>Branch</th><th>Phone number</th><th>Home address</th><th>Status</th><th>Actions</th>
             </tr>
           </thead>
           <tbody id="membersListBody"></tbody>
@@ -434,18 +452,18 @@
         <input type="hidden" id="execId">
         <div class="form-row">
           <div>
-            <label for="execRole">Position</label>
-            <input type="text" id="execRole" list="execRoleOptions" placeholder="e.g. President, or type a new position">
-            <datalist id="execRoleOptions">
-              <option value="President">
-              <option value="Vice President">
-              <option value="Secretary">
-              <option value="Assistant Secretary">
-              <option value="Treasurer">
-              <option value="Financial Secretary">
-              <option value="Public Relations Officer">
-              <option value="Welfare Officer">
-            </datalist>
+            <label for="execRole">Role</label>
+            <select id="execRole">
+              <option>President</option>
+              <option>Vice President</option>
+              <option>Secretary</option>
+              <option>Assistant Secretary</option>
+              <option>Treasurer</option>
+              <option>Financial Secretary</option>
+              <option>Public Relations Officer</option>
+              <option>Welfare Officer</option>
+              <option>Other</option>
+            </select>
           </div>
           <div>
             <label for="execBranch">Branch</label>
@@ -477,21 +495,6 @@
           </div>
           <div></div>
         </div>
-        <div class="form-row">
-          <div style="grid-column: 1 / -1;">
-            <label>Photo</label>
-            <div class="photo-field">
-              <img id="execPhotoPreview" class="thumb" style="display:none;" alt="Photo preview">
-              <span id="execPhotoPlaceholder" class="thumb-ph">?</span>
-              <div class="photo-input-wrap">
-                <input type="file" id="execPhotoInput" accept="image/jpeg,image/png,image/webp">
-                <p class="photo-hint">Optional. Shown on the public Contact page. JPEG/PNG/WebP, resized automatically.</p>
-                <button type="button" class="actionBtn secondary" id="execPhotoClear" style="display:none; margin-top:6px;" onclick="clearExecPhoto()">Remove photo</button>
-              </div>
-            </div>
-            <input type="hidden" id="execPhotoData">
-          </div>
-        </div>
         <div class="form-actions">
           <button type="button" class="actionBtn" onclick="saveExecutive()">Save contact</button>
           <button type="button" class="actionBtn secondary" onclick="clearExecForm()">Clear form</button>
@@ -502,7 +505,7 @@
       <div class="toolbar"><span id="execCount">0 contact(s)</span></div>
       <div class="tableScroll">
         <table>
-          <thead><tr><th>Photo</th><th>Role</th><th>Name</th><th>Branch</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead>
+          <thead><tr><th>Role</th><th>Name</th><th>Branch</th><th>Phone</th><th>Email</th><th>Action</th></tr></thead>
           <tbody id="execBody"></tbody>
         </table>
       </div>
@@ -519,6 +522,56 @@
     </thead>
     <tbody id="printBody"></tbody>
   </table>
+</div>
+
+<div class="modal-overlay" id="memberEditOverlay">
+  <div class="modal-box">
+    <h2>Edit member</h2>
+    <div class="modal-photo-row">
+      <div id="memberEditPhotoPreview"></div>
+      <div>
+        <input type="file" id="memberEditPhotoInput" accept="image/*" onchange="memberEditPhotoChange(event)">
+        <div style="font-size:12px;color:#666;margin-top:4px;">Upload a new photo to replace the current one.</div>
+      </div>
+    </div>
+    <input type="hidden" id="editId">
+    <div class="form-row">
+      <div><label>Full name</label><input type="text" id="editFullName"></div>
+      <div><label>Gender</label>
+        <select id="editGender">
+          <option value="">—</option><option value="Male">Male</option><option value="Female">Female</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Date of birth</label><input type="date" id="editDob"></div>
+      <div><label>Branch</label><input type="text" id="editBranch"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Occupation</label><input type="text" id="editOccupation"></div>
+      <div><label>Status</label>
+        <select id="editStatus">
+          <option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div><label>Phone</label><input type="text" id="editPhone"></div>
+      <div><label>Email</label><input type="text" id="editEmail"></div>
+    </div>
+    <div class="form-row">
+      <div style="grid-column: 1 / -1;"><label>Address</label><input type="text" id="editAddress"></div>
+    </div>
+    <div class="form-row">
+      <div><label>Next of kin name</label><input type="text" id="editKinName"></div>
+      <div><label>Next of kin phone</label><input type="text" id="editKinPhone"></div>
+    </div>
+    <div id="memberEditMsg"></div>
+    <div class="form-actions">
+      <button type="button" class="actionBtn" onclick="saveMemberEdit()">Save changes</button>
+      <button type="button" class="actionBtn secondary" onclick="closeMemberEdit()">Cancel</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -646,7 +699,7 @@ function renderMembersList() {
   const body = document.getElementById("membersListBody");
   body.innerHTML = "";
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No members match this filter.</td></tr>';
+    body.innerHTML = '<tr><td colspan="8" style="color:#888;">No members match this filter.</td></tr>';
     return;
   }
   list.forEach((m, i) => {
@@ -658,9 +711,141 @@ function renderMembersList() {
       <td>${escapeHtml(m.branch || "")}</td>
       <td>${escapeHtml(m.phone || "")}</td>
       <td class="wrap-cell">${escapeHtml(m.address || "")}</td>
-      <td><span class="status ${m.status || ""}">${escapeHtml(m.status || "")}</span></td>`;
+      <td><span class="status ${m.status || ""}">${escapeHtml(m.status || "")}</span></td>
+      <td>
+        <button type="button" class="actionBtn secondary" onclick="openMemberEdit(${m.id})">Edit</button>
+        <button type="button" class="actionBtn danger" onclick="deleteMember(${m.id})">Delete</button>
+      </td>`;
     body.appendChild(tr);
   });
+}
+
+let editPendingPhoto = null;
+
+function fileToResizedDataUrl(file, maxSize, quality) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Could not read that file."));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("That file is not a readable image."));
+      img.onload = () => {
+        let width = img.width, height = img.height;
+        if (width > maxSize || height > maxSize) {
+          if (width > height) { height = Math.round(height * (maxSize / width)); width = maxSize; }
+          else { width = Math.round(width * (maxSize / height)); height = maxSize; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        canvas.getContext("2d").drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openMemberEdit(id) {
+  const m = allMembers.find(x => x.id === id);
+  if (!m) return;
+  editPendingPhoto = null;
+  document.getElementById("editId").value = m.id;
+  document.getElementById("editFullName").value = m.full_name || "";
+  document.getElementById("editGender").value = m.gender || "";
+  document.getElementById("editDob").value = m.date_of_birth || "";
+  document.getElementById("editBranch").value = m.branch || "";
+  document.getElementById("editOccupation").value = m.occupation || "";
+  document.getElementById("editStatus").value = m.status || "pending";
+  document.getElementById("editPhone").value = m.phone || "";
+  document.getElementById("editEmail").value = m.email || "";
+  document.getElementById("editAddress").value = m.address || "";
+  document.getElementById("editKinName").value = m.next_of_kin_name || "";
+  document.getElementById("editKinPhone").value = m.next_of_kin_phone || "";
+  document.getElementById("memberEditPhotoPreview").innerHTML = memberPhoto(m);
+  document.getElementById("memberEditPhotoInput").value = "";
+  const msg = document.getElementById("memberEditMsg");
+  msg.textContent = "";
+  msg.className = "";
+  document.getElementById("memberEditOverlay").classList.add("open");
+}
+
+function closeMemberEdit() {
+  document.getElementById("memberEditOverlay").classList.remove("open");
+  editPendingPhoto = null;
+}
+
+async function memberEditPhotoChange(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const msg = document.getElementById("memberEditMsg");
+  try {
+    editPendingPhoto = await fileToResizedDataUrl(file, 480, 0.82);
+    document.getElementById("memberEditPhotoPreview").innerHTML =
+      `<img class="thumb" src="${editPendingPhoto}" alt="">`;
+  } catch (err) {
+    msg.className = "err";
+    msg.textContent = err.message || "Could not read that image.";
+  }
+}
+
+async function saveMemberEdit() {
+  const id = Number(document.getElementById("editId").value);
+  if (!id) return;
+  const msg = document.getElementById("memberEditMsg");
+  msg.className = "";
+  msg.textContent = "Saving…";
+  const payload = {
+    id,
+    full_name: document.getElementById("editFullName").value.trim(),
+    gender: document.getElementById("editGender").value,
+    date_of_birth: document.getElementById("editDob").value,
+    branch: document.getElementById("editBranch").value.trim(),
+    occupation: document.getElementById("editOccupation").value.trim(),
+    status: document.getElementById("editStatus").value,
+    phone: document.getElementById("editPhone").value.trim(),
+    email: document.getElementById("editEmail").value.trim(),
+    address: document.getElementById("editAddress").value.trim(),
+    next_of_kin_name: document.getElementById("editKinName").value.trim(),
+    next_of_kin_phone: document.getElementById("editKinPhone").value.trim(),
+  };
+  if (editPendingPhoto) payload.photo = editPendingPhoto;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not save changes.");
+    msg.textContent = "Saved.";
+    await loadMembers();
+    setTimeout(closeMemberEdit, 500);
+  } catch (err) {
+    msg.className = "err";
+    msg.textContent = err.message || "Could not save changes.";
+  }
+}
+
+async function deleteMember(id) {
+  const m = allMembers.find(x => x.id === id);
+  const label = m ? (m.full_name || "this member") : "this member";
+  if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+      body: JSON.stringify({ id })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || "Could not delete member.");
+    }
+    await loadMembers();
+  } catch (err) {
+    alert(err.message || "Could not delete member.");
+  }
 }
 
 function buildPrintTable() {
@@ -1512,76 +1697,13 @@ function setExecutives(list) {
   if (window.AdagborStore) AdagborStore.save("executives", list, adminKey);
 }
 
-// Resize/compress a photo file to a small JPEG data URL (max edge 240px)
-function readExecPhotoAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith("image/")) return reject(new Error("Please choose an image file."));
-    if (file.size > 5 * 1024 * 1024) return reject(new Error("Photo must be under 5 MB."));
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Could not read photo."));
-    reader.onload = () => {
-      const img = new Image();
-      img.onerror = () => reject(new Error("Invalid image."));
-      img.onload = () => {
-        const maxEdge = 240;
-        let w = img.width, h = img.height;
-        if (w > h && w > maxEdge) { h = Math.round(h * maxEdge / w); w = maxEdge; }
-        else if (h > maxEdge) { w = Math.round(w * maxEdge / h); h = maxEdge; }
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
-      };
-      img.src = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-}
-
-function setExecPhotoPreview(dataUrl) {
-  const img = document.getElementById("execPhotoPreview");
-  const ph = document.getElementById("execPhotoPlaceholder");
-  const clearBtn = document.getElementById("execPhotoClear");
-  document.getElementById("execPhotoData").value = dataUrl || "";
-  if (dataUrl) {
-    img.src = dataUrl;
-    img.style.display = "inline-block";
-    ph.style.display = "none";
-    clearBtn.style.display = "inline-block";
-  } else {
-    img.style.display = "none";
-    img.removeAttribute("src");
-    ph.style.display = "inline-flex";
-    clearBtn.style.display = "none";
-  }
-}
-
-function clearExecPhoto() {
-  document.getElementById("execPhotoInput").value = "";
-  setExecPhotoPreview("");
-}
-
-document.getElementById("execPhotoInput").addEventListener("change", async () => {
-  const f = document.getElementById("execPhotoInput").files && document.getElementById("execPhotoInput").files[0];
-  if (!f) return;
-  try {
-    const dataUrl = await readExecPhotoAsDataUrl(f);
-    setExecPhotoPreview(dataUrl);
-  } catch (err) {
-    document.getElementById("execMsg").textContent = err.message || "Could not process photo.";
-    document.getElementById("execMsg").className = "err";
-  }
-});
-
 function clearExecForm() {
   document.getElementById("execId").value = "";
-  document.getElementById("execRole").value = "";
+  document.getElementById("execRole").value = "President";
   document.getElementById("execBranch").value = "";
   document.getElementById("execName").value = "";
   document.getElementById("execPhone").value = "";
   document.getElementById("execEmail").value = "";
-  document.getElementById("execPhotoInput").value = "";
-  setExecPhotoPreview("");
   document.getElementById("execMsg").textContent = "";
 }
 
@@ -1593,8 +1715,7 @@ function saveExecutive() {
     name: document.getElementById("execName").value.trim(),
     branch: document.getElementById("execBranch").value.trim(),
     phone: document.getElementById("execPhone").value.trim(),
-    email: document.getElementById("execEmail").value.trim(),
-    photo: document.getElementById("execPhotoData").value || ""
+    email: document.getElementById("execEmail").value.trim()
   };
   if (!entry.name) {
     document.getElementById("execMsg").textContent = "Name is required.";
@@ -1615,13 +1736,11 @@ function editExecutive(id) {
   const e = getExecutives().find(x => x.id === id);
   if (!e) return;
   document.getElementById("execId").value = e.id;
-  document.getElementById("execRole").value = e.role || "";
+  document.getElementById("execRole").value = e.role || "President";
   document.getElementById("execBranch").value = e.branch || "";
   document.getElementById("execName").value = e.name || "";
   document.getElementById("execPhone").value = e.phone || "";
   document.getElementById("execEmail").value = e.email || "";
-  document.getElementById("execPhotoInput").value = "";
-  setExecPhotoPreview(e.photo || "");
   switchTab("executives");
 }
 
@@ -1636,11 +1755,10 @@ function renderExecutives() {
   document.getElementById("execCount").textContent = `${list.length} contact(s)`;
   const body = document.getElementById("execBody");
   if (!list.length) {
-    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No executive contacts yet.</td></tr>';
+    body.innerHTML = '<tr><td colspan="6" style="color:#888;">No executive contacts yet.</td></tr>';
     return;
   }
   body.innerHTML = list.map(e => `<tr>
-    <td>${e.photo ? `<img class="thumb" src="${escapeHtml(e.photo)}" alt="">` : `<span class="thumb-ph">${escapeHtml((e.name || "?").charAt(0).toUpperCase())}</span>`}</td>
     <td>${escapeHtml(e.role || "")}</td>
     <td>${escapeHtml(e.name || "")}</td>
     <td>${escapeHtml(e.branch || "")}</td>
