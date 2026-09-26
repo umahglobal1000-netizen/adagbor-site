@@ -164,6 +164,13 @@
   }
   .pay-group-title:first-child { margin-top: 0; }
 
+  .badge-present{display:inline-block;padding:2px 10px;border-radius:10px;background:#d4edda;color:#155724;font-size:0.8rem;font-weight:600;}
+  .badge-absent{display:inline-block;padding:2px 10px;border-radius:10px;background:#f8d7da;color:#721c24;font-size:0.8rem;font-weight:600;}
+  .res-item,.ann-item{padding:14px 0;border-bottom:1px solid #eee6d0;}
+  .res-item:last-child,.ann-item:last-child{border-bottom:none;}
+  .res-item h3,.ann-item h3{margin:0 0 6px;font-size:1rem;color:#4a3f22;}
+  .res-item .meta,.ann-item .meta{font-size:0.8rem;color:#7a6f4f;margin-bottom:8px;}
+  .res-item .body,.ann-item .body{font-size:0.92rem;color:#2f2a1f;white-space:pre-wrap;line-height:1.5;}
   .readonly-note {
     font-size: 0.8rem;
     color: #9a8f6f;
@@ -171,6 +178,7 @@
     text-align: center;
   }
 </style>
+<script src="data-sync.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -187,6 +195,9 @@
       <button type="button" class="tab active" data-tab="profile" onclick="switchTab('profile')">My profile</button>
       <button type="button" class="tab" data-tab="directory" onclick="switchTab('directory')">Members directory</button>
       <button type="button" class="tab" data-tab="payments" onclick="switchTab('payments')">Payment history</button>
+      <button type="button" class="tab" data-tab="attendance" onclick="switchTab('attendance')">My attendance</button>
+      <button type="button" class="tab" data-tab="resolutions" onclick="switchTab('resolutions')">Resolutions</button>
+      <button type="button" class="tab" data-tab="announcements" onclick="switchTab('announcements')">Announcements</button>
     </div>
 
     <div id="tab-profile" class="tab-panel active">
@@ -240,6 +251,30 @@
         <p class="readonly-note">Your contribution records as entered by the committee</p>
       </div>
     </div>
+
+    <div id="tab-attendance" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar"><span id="attCount">Your attendance</span></div>
+        <div id="attMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="attList"></div>
+        <p class="readonly-note">Present / absent as recorded by the committee</p>
+      </div>
+    </div>
+    <div id="tab-resolutions" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar"><span id="resCount">Meeting resolutions</span></div>
+        <div id="resMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="resList"></div>
+        <p class="readonly-note">Read-only · published by the committee</p>
+      </div>
+    </div>
+    <div id="tab-announcements" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar"><span id="annCount">Announcements</span></div>
+        <div id="annMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="annList"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -263,6 +298,9 @@ function switchTab(name) {
   if (name === 'payments') {
     loadPaymentHistory();
   }
+  if (name === 'attendance') loadMyAttendance();
+  if (name === 'resolutions') loadResolutions();
+  if (name === 'announcements') loadAnnouncements();
 }
 
 async function loadMe() {
@@ -437,25 +475,11 @@ const DEFAULT_CONTRIB_TYPES = [
 ];
 
 async function loadContributionTypes() {
-  let types = DEFAULT_CONTRIB_TYPES.slice();
-  try {
-    const raw = localStorage.getItem("adagbor_contribution_types");
-    if (raw) {
-      const custom = JSON.parse(raw);
-      if (Array.isArray(custom)) {
-        const ids = new Set(types.map(t => t.id));
-        custom.forEach(t => { if (t && t.id && !ids.has(t.id)) types.push(t); });
-      }
-    }
-  } catch (e) {}
-  try {
-    const res = await fetch("adagbor-contribution-types.json", { cache: "no-store" });
-    if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length) types = data;
-    }
-  } catch (e) {}
-  return types;
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("contribution_types", DEFAULT_CONTRIB_TYPES.slice());
+    if (Array.isArray(v) && v.length) return v;
+  }
+  return DEFAULT_CONTRIB_TYPES.slice();
 }
 
 
@@ -535,6 +559,22 @@ async function fillPayTypeFilter(types, payments) {
 let cachedMemberPayments = [];
 let cachedContribTypes = [];
 
+
+async function loadAllPayments() {
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("payments", []);
+    return Array.isArray(v) ? v : [];
+  }
+  try {
+    const raw = localStorage.getItem(CONTRIB_PAY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
+
 async function loadPaymentHistory() {
   const countEl = document.getElementById("payCount");
   const msg = document.getElementById("payMsg");
@@ -565,6 +605,7 @@ async function loadPaymentHistory() {
   renderMemberPayments();
 }
 
+
 function renderMemberPayments() {
   const countEl = document.getElementById("payCount");
   const msg = document.getElementById("payMsg");
@@ -576,24 +617,86 @@ function renderMemberPayments() {
   const mode = (document.getElementById("payPeriodMode") && document.getElementById("payPeriodMode").value) || "all";
   const periodVal = (document.getElementById("payPeriodValue") && document.getElementById("payPeriodValue").value) || "";
 
-  let mine = cachedMemberPayments.filter(p => !isDonationPayment(p));
+  // Base: this member's non-donation payments
+  let base = (cachedMemberPayments || []).filter(p => !isDonationPayment(p));
+  // Period filter for both totals and list
+  const inPeriod = base.filter(p => paymentMatchesPeriod(p, mode, periodVal));
+
+  // --- Total payment cards for each contribution item (for selected day/month/year) ---
+  if (totalsBox) {
+    const byType = {};
+    // Seed from admin types (exclude donation)
+    (cachedContribTypes || []).forEach(t => {
+      if (!t || t.kind === "donation" || t.id === "donation") return;
+      byType[t.name || t.id] = { id: t.id, total: 0, count: 0 };
+    });
+    inPeriod.forEach(p => {
+      const name = p.typeName || p.typeId || "Other";
+      if (!byType[name]) byType[name] = { id: p.typeId || name, total: 0, count: 0 };
+      byType[name].total += Number(p.amount) || 0;
+      byType[name].count += 1;
+    });
+
+    let names = Object.keys(byType).sort();
+    // If a specific contribution is selected, highlight only that card set
+    if (typeFilter) {
+      names = names.filter(n => {
+        const rec = byType[n];
+        return n === typeFilter || (rec && rec.id === typeFilter);
+      });
+      if (!names.length) {
+        const t = (cachedContribTypes || []).find(x => x.id === typeFilter || x.name === typeFilter);
+        const label = t ? (t.name || t.id) : typeFilter;
+        byType[label] = byType[label] || { id: typeFilter, total: 0, count: 0 };
+        names = [label];
+      }
+    }
+
+    const periodLabel = mode === "all" ? "all time"
+      : (mode === "day" ? "day " + periodVal
+      : mode === "month" ? "month " + periodVal
+      : mode === "year" ? "year " + periodVal : "");
+
+    const grand = names.reduce((s, n) => s + (byType[n].total || 0), 0);
+
+    totalsBox.style.display = "block";
+    totalsBox.innerHTML =
+      '<div style="font-size:0.9rem;color:#4a3f22;margin-bottom:12px;font-weight:bold;">Your total payment by item' +
+      (periodLabel ? ' <span style="font-weight:normal;color:#7a6f4f;">(' + escapeHtml(periodLabel) + ')</span>' : '') +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px;">' +
+      names.map(name =>
+        '<div style="background:#f5f0e1;border:1px solid #d8cfae;border-radius:6px;padding:12px 14px;">' +
+        '<div style="font-size:0.75rem;color:#7a6f4f;">' + escapeHtml(name) + '</div>' +
+        '<div style="font-size:1.2rem;font-weight:bold;color:#4a3f22;margin-top:6px;">' +
+        (byType[name].total || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
+        '</div>' +
+        '<div style="font-size:0.7rem;color:#9a8f6f;margin-top:4px;">' + (byType[name].count || 0) + ' payment(s)</div>' +
+        '</div>'
+      ).join("") +
+      '</div>' +
+      '<div style="font-size:1rem;color:#5a4a1f;font-weight:bold;padding:8px 0 4px;border-top:1px solid #eee6d0;">Combined total: ' +
+      grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>' +
+      '<p style="font-size:0.75rem;color:#9a8f6f;margin:6px 0 0;">Use Period (day / month / year) to search totals for that time. Voluntary donations to members are not included.</p>';
+  }
+
+  // --- Detail list (also apply contribution type filter) ---
+  let mine = inPeriod;
   if (typeFilter) {
     mine = mine.filter(p =>
       String(p.typeId || "") === typeFilter ||
       String(p.typeName || "") === typeFilter
     );
   }
-  mine = mine.filter(p => paymentMatchesPeriod(p, mode, periodVal));
 
   countEl.textContent = mine.length + " payment(s)";
 
   if (!mine.length) {
     listEl.innerHTML = "";
     msg.style.display = "block";
-    msg.textContent = cachedMemberPayments.length
+    msg.textContent = (cachedMemberPayments || []).length
       ? "No payments match this contribution or period."
       : "No contribution records yet for your membership.";
-    if (totalsBox) { totalsBox.style.display = "none"; totalsBox.innerHTML = ""; }
     return;
   }
   msg.style.display = "none";
@@ -618,29 +721,122 @@ function renderMemberPayments() {
     }).join("");
     return '<div class="pay-group-title">' + escapeHtml(typeName) + '</div>' + rows;
   }).join("");
+}
 
-  // Totals for filtered view (already excludes donations)
-  if (totalsBox) {
-    const byType = {};
-    mine.forEach(p => {
-      const name = p.typeName || p.typeId || "Other";
-      byType[name] = (byType[name] || 0) + (Number(p.amount) || 0);
-    });
-    const grand = mine.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-    totalsBox.style.display = "block";
-    totalsBox.innerHTML =
-      '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:8px;">' +
-      Object.keys(byType).sort().map(name =>
-        '<div style="background:#f5f0e1;border:1px solid #d8cfae;border-radius:6px;padding:10px 12px;">' +
-        '<div style="font-size:0.75rem;color:#7a6f4f;">' + escapeHtml(name) + '</div>' +
-        '<div style="font-weight:bold;color:#4a3f22;margin-top:4px;">' +
-        byType[name].toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
-        '</div></div>'
-      ).join("") +
-      '</div>' +
-      '<div style="font-size:0.9rem;color:#5a4a1f;font-weight:bold;">Total for selection: ' +
-      grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>';
+
+
+async function loadMyAttendance() {
+  const countEl = document.getElementById('attCount');
+  const msg = document.getElementById('attMsg');
+  const listEl = document.getElementById('attList');
+  if (!countEl) return;
+  msg.style.display = 'none';
+  listEl.innerHTML = '';
+  if (!currentMember) {
+    msg.style.display = 'block';
+    msg.textContent = 'Profile not loaded.';
+    return;
   }
+  let data = { sessions: [], records: [] };
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("attendance", { sessions: [], records: [] });
+    if (v && (v.sessions || v.records)) data = v;
+  } else {
+    try {
+      const raw = localStorage.getItem('adagbor_attendance');
+      if (raw) data = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  const mine = (data.records || []).filter(r => matchesCurrentMember(r, currentMember));
+  const sessionMap = {};
+  (data.sessions || []).forEach(s => { sessionMap[s.id] = s; });
+
+  countEl.textContent = mine.length + ' record(s)';
+  if (!mine.length) {
+    msg.style.display = 'block';
+    msg.textContent = 'No attendance recorded for you yet.';
+    return;
+  }
+  mine.sort((a, b) => {
+    const sa = sessionMap[a.sessionId];
+    const sb = sessionMap[b.sessionId];
+    return String(sb && sb.when || '').localeCompare(String(sa && sa.when || ''));
+  });
+  listEl.innerHTML = mine.map(r => {
+    const s = sessionMap[r.sessionId] || {};
+    const badge = r.status === 'present'
+      ? '<span class="badge-present">Present</span>'
+      : r.status === 'absent'
+      ? '<span class="badge-absent">Absent</span>'
+      : escapeHtml(r.status || '—');
+    return '<div class="pay-row"><div><div class="type">' + escapeHtml(s.when || 'Session') +
+      (s.label ? ' — ' + escapeHtml(s.label) : '') +
+      '</div><div class="meta">' + escapeHtml(s.mode === 'month' ? 'Monthly session' : 'Day session') +
+      '</div></div><div>' + badge + '</div></div>';
+  }).join('');
+}
+
+async function loadResolutions() {
+  const countEl = document.getElementById('resCount');
+  const msg = document.getElementById('resMsg');
+  const listEl = document.getElementById('resList');
+  if (!countEl) return;
+  msg.style.display = 'none';
+  let list = [];
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("resolutions", []);
+    if (Array.isArray(v)) list = v;
+  } else {
+    try {
+      const raw = localStorage.getItem('adagbor_resolutions');
+      if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) list = p; }
+    } catch (e) {}
+  }
+  list = list.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  countEl.textContent = list.length + ' resolution(s)';
+  if (!list.length) {
+    msg.style.display = 'block';
+    msg.textContent = 'No resolutions published yet.';
+    listEl.innerHTML = '';
+    return;
+  }
+  listEl.innerHTML = list.map(r =>
+    '<div class="res-item"><h3>' + escapeHtml(r.title || '') + '</h3>' +
+    '<div class="meta">' + escapeHtml(r.date || '') + '</div>' +
+    '<div class="body">' + escapeHtml(r.body || '') + '</div></div>'
+  ).join('');
+}
+
+async function loadAnnouncements() {
+  const countEl = document.getElementById('annCount');
+  const msg = document.getElementById('annMsg');
+  const listEl = document.getElementById('annList');
+  if (!countEl) return;
+  msg.style.display = 'none';
+  let list = [];
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("announcements", []);
+    if (Array.isArray(v)) list = v;
+  } else {
+    try {
+      const raw = localStorage.getItem('adagbor_announcements');
+      if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) list = p; }
+    } catch (e) {}
+  }
+  list = list.filter(a => a.active !== false).slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  countEl.textContent = list.length + ' announcement(s)';
+  if (!list.length) {
+    msg.style.display = 'block';
+    msg.textContent = 'No announcements right now.';
+    listEl.innerHTML = '';
+    return;
+  }
+  listEl.innerHTML = list.map(a =>
+    '<div class="ann-item"><h3>' + escapeHtml(a.title || '') + '</h3>' +
+    '<div class="meta">' + escapeHtml((a.createdAt || '').slice(0, 10)) + '</div>' +
+    '<div class="body">' + escapeHtml(a.body || '') + '</div></div>'
+  ).join('');
 }
 
 

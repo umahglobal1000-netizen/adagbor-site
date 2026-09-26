@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Home — Adagbor Descendant Association</title>
+<title>Adagbor Descendant Association</title>
+<meta name="description" content="Adagbor Descendant Association — ancestral home Ugbedu, Kogi State. Membership, events, and family connection across Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji and beyond.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -13,30 +14,34 @@
     --green:#166B44; --brass:#C79A2E; --rule:#E4D9AF; --rust:#B8442A;
   }
   *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
   body{margin:0;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',sans-serif;line-height:1.55;}
   h1,h2,h3{font-family:'Fraunces',serif;font-weight:500;letter-spacing:-0.01em;margin:0;}
   a{color:inherit;}
   .wrap{max-width:920px;margin:0 auto;padding:0 24px;}
-  header{border-bottom:1px solid var(--rule);padding:20px 0;position:relative;}
+  header{border-bottom:1px solid var(--rule);padding:20px 0;position:sticky;top:0;background:var(--paper);z-index:30;}
   .nav-toggle{display:none;background:none;border:none;cursor:pointer;padding:6px;color:var(--ink);}
   .nav-toggle svg{width:24px;height:24px;display:block;}
   .header-row{display:flex;align-items:center;justify-content:space-between;gap:16px;}
   .brand-row{display:flex;align-items:center;gap:12px;}
   .brand-mark{width:36px;height:36px;border-radius:50%;background:var(--green);color:var(--paper);display:flex;align-items:center;justify-content:center;font-family:'Fraunces',serif;font-size:14px;font-weight:600;}
   .brand small{display:block;font-size:12px;color:var(--ink-soft);margin-top:2px;}
-  nav{display:flex;gap:22px;font-size:14px;}
+  nav{display:flex;gap:18px;font-size:14px;flex-wrap:wrap;align-items:center;}
   nav a{text-decoration:none;color:var(--ink-soft);border-bottom:1px solid transparent;padding-bottom:2px;}
-  nav a:hover{color:var(--ink);border-bottom-color:var(--green);}
-  .hero{padding:48px 0 40px;border-bottom:1px solid var(--rule);}
+  nav a:hover,nav a.active{color:var(--ink);border-bottom-color:var(--green);}
+  .hero{padding:56px 0 48px;border-bottom:1px solid var(--rule);}
   .hero-entry{font-size:13px;color:var(--ink-soft);margin-bottom:18px;display:flex;gap:10px;align-items:center;}
   .hero-entry .dot{width:5px;height:5px;border-radius:50%;background:var(--brass);}
-  .hero h1{font-size:36px;line-height:1.15;max-width:16ch;}
+  .hero h1{font-size:40px;line-height:1.12;max-width:16ch;}
   .hero h1 em{font-style:italic;color:var(--green);}
-  .hero p.lede{font-size:16px;color:var(--ink-soft);max-width:60ch;margin-top:16px;}
+  .hero p.lede{font-size:16px;color:var(--ink-soft);max-width:58ch;margin-top:16px;}
+  .hero-actions{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap;}
+  .btn-primary{display:inline-block;padding:12px 26px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--green);background:var(--green);color:var(--paper);text-decoration:none;}
+  .btn-ghost{display:inline-block;padding:12px 22px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--ink-soft);background:transparent;color:var(--ink);text-decoration:none;}
   .section{padding:52px 0;border-bottom:1px solid var(--rule);}
   .section h2{font-size:26px;margin-bottom:8px;}
-  .section .sub{color:var(--ink-soft);font-size:14px;margin:0 0 28px;max-width:50ch;}
-  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:20px;}
+  .section .sub{color:var(--ink-soft);font-size:14px;margin:0 0 28px;max-width:52ch;}
+  .card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
   .card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:22px;}
   .card h3{font-size:17px;margin-bottom:8px;}
   .card p{margin:0;font-size:13.5px;color:var(--ink-soft);}
@@ -46,28 +51,26 @@
   .ledger-num{font-family:'Fraunces',serif;font-size:20px;color:var(--brass);}
   .ledger-body h3{font-size:17px;font-weight:500;}
   .ledger-body p{margin:4px 0 0;font-size:13.5px;color:var(--ink-soft);max-width:52ch;}
-  form .field{margin-bottom:16px;}
-  form label{display:block;font-size:13px;font-weight:500;margin-bottom:6px;}
-  form input,form textarea,form select{width:100%;padding:10px 12px;border:1px solid var(--rule);border-radius:2px;font-family:inherit;font-size:14px;background:#fff;color:var(--ink);}
-  form textarea{min-height:110px;resize:vertical;}
-  .btn-primary{display:inline-block;padding:12px 26px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--green);background:var(--green);color:var(--paper);cursor:pointer;font-family:inherit;text-decoration:none;}
-  .btn-ghost{display:inline-block;padding:12px 22px;font-size:14px;font-weight:500;border-radius:2px;border:1px solid var(--ink-soft);background:transparent;color:var(--ink);text-decoration:none;}
-  .hero-actions{display:flex;gap:14px;margin-top:28px;flex-wrap:wrap;}
-  #formNote{display:none;margin-top:14px;font-size:14px;color:var(--green);}
-  .contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start;}
+  .exec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:20px;}
+  .exec-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:22px;}
+  .exec-card .role{font-size:12px;color:var(--brass);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+  .exec-card h3{font-size:18px;margin-bottom:4px;}
+  .exec-card .branch{font-size:13px;color:var(--ink-soft);margin-bottom:12px;}
+  .exec-card .line{font-size:14px;margin:6px 0;}
+  .exec-card a{color:var(--green);text-decoration:none;}
+  #emptyExec{display:none;padding:20px;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-soft);font-size:14px;}
   footer{padding:28px 0;font-size:13px;color:var(--ink-soft);}
   @media (max-width:720px){
     .nav-toggle{display:block;}
-    nav{display:block;position:absolute;left:0;right:0;top:100%;background:var(--paper);border-bottom:1px solid var(--rule);max-height:0;overflow:hidden;transition:max-height .25s ease;z-index:20;}
-    nav.open{max-height:360px;}
-    nav a{display:block;padding:14px 24px;border-top:1px solid var(--rule);border-bottom:none;}
+    nav{display:none;position:absolute;left:0;right:0;top:100%;background:var(--paper);border-bottom:1px solid var(--rule);flex-direction:column;gap:0;padding:0;}
+    nav.open{display:flex;}
+    nav a{padding:14px 24px;border-top:1px solid var(--rule);border-bottom:none;}
     .hero h1{font-size:30px;}
-    .contact-grid{grid-template-columns:1fr;}
   }
 </style>
+<script src="data-sync.js"></script>
 </head>
 <body>
-
 <header>
   <div class="wrap header-row">
     <div class="brand-row">
@@ -78,28 +81,38 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
     </button>
     <nav id="siteNav">
-      <a href="index.html">Home</a>
-      <a href="about.html">About</a>
-      <a href="events.html">Events</a>
+      <a href="#home" data-nav>Home</a>
+      <a href="#about" data-nav>About</a>
+      <a href="#events" data-nav>Events</a>
       <a href="membership.html">Membership</a>
-      <a href="contact.html">Contact</a>
+      <a href="#contact" data-nav>Contact</a>
       <a href="login.html">Login</a>
     </nav>
   </div>
 </header>
 
 
-<section class="hero">
+<section class="section" id="announcements" style="padding-top:28px;padding-bottom:28px;background:var(--paper-dim);">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Announcements</div>
+    <div id="publicAnnEmpty" style="color:var(--ink-soft);font-size:14px;">No announcements at this time.</div>
+    <div id="publicAnnList" class="card-grid"></div>
+  </div>
+</section>
+
+<!-- HOME -->
+<section class="hero" id="home">
   <div class="wrap">
     <div class="hero-entry"><span class="dot"></span> Adagbor Descendant Association</div>
     <h1>One <em>ancestral home,</em> many branches.</h1>
-    <p class="lede">Descendants of Adagbor — rooted in Ugbedu, Kogi State — gathered across Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji and beyond. This association keeps the family connected, on record, and looking after one another.</p>
+    <p class="lede">Descendants of Adagbor — rooted in Ugbedu, Kogi State — across Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji and beyond. This association keeps the family connected, on record, and looking after one another.</p>
     <div class="hero-actions">
       <a class="btn-primary" href="membership.html">Join the register</a>
-      <a class="btn-ghost" href="about.html">Our story</a>
+      <a class="btn-ghost" href="#about">Our story</a>
     </div>
   </div>
 </section>
+
 <section class="section">
   <div class="wrap">
     <h2>The branches</h2>
@@ -114,13 +127,63 @@
   </div>
 </section>
 
+<!-- ABOUT -->
+<section class="section" id="about">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Our story</div>
+    <h2>One ancestral home, many branches</h2>
+    <p class="sub" style="margin-top:12px;">Adagbor's descendants trace their roots to Ugbedu. Over generations, family members settled in Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji and beyond, forming the branches this association exists to keep connected.</p>
+    <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Ugbedu — the ancestral home</h3><p>Founding story and presence at Ugbedu can be expanded by the committee.</p></div></div>
+    <div class="ledger-row"><div class="ledger-num">•</div><div class="ledger-body"><h3>Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji</h3><p>Settled branches of the same family line.</p></div></div>
+    <h2 style="margin-top:40px;">Why we gather</h2>
+    <div class="card-grid" style="margin-top:16px;">
+      <div class="card"><h3>Heritage</h3><p>Keeping the story of Ugbedu and its branches known to every generation.</p></div>
+      <div class="card"><h3>Unity</h3><p>Bringing every branch together, in person and on record, as one family.</p></div>
+      <div class="card"><h3>Support</h3><p>Looking after members through the fund and through each other.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- EVENTS -->
+<section class="section" id="events">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Gatherings &amp; meetings</div>
+    <h2>When the family meets</h2>
+    <p class="sub">From annual conventions to branch meetings — the moments we come together.</p>
+    <div class="card-grid">
+      <div class="card"><div class="meta">ANNUAL · 2027</div><h3>General assembly</h3><p>Full association meeting at Ugbedu. Register review, fund report, and elections as due.</p></div>
+      <div class="card"><div class="meta">BRANCH · TBA</div><h3>Branch meetings</h3><p>Local sittings ahead of the general assembly.</p></div>
+      <div class="card"><div class="meta">ONGOING</div><h3>Membership drive</h3><p>Entry to the 2027 register remains open for descendants of every branch.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT / executives -->
+<section class="section" id="contact">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Executive contacts</div>
+    <h2>Reach the committee</h2>
+    <p class="sub">Contact details for current officers. Managed by admin and published for members.</p>
+    <div id="emptyExec">Executive contacts have not been published yet. Email membership@adagbor-association.org or check back later.</div>
+    <div class="exec-grid" id="execGrid"></div>
+    <div class="ledger-row" style="margin-top:28px;">
+      <div class="ledger-num">•</div>
+      <div class="ledger-body"><h3>Membership</h3><p>membership@adagbor-association.org</p></div>
+    </div>
+    <div class="ledger-row">
+      <div class="ledger-num">•</div>
+      <div class="ledger-body"><h3>Ancestral home</h3><p>Ugbedu, Kogi State, Nigeria</p></div>
+    </div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap" style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;width:100%;">
     <div>&copy; Adagbor Descendant Association</div>
-    <div>Ancestral home: Ugbedu &middot; Branches: Itobe, Ajaokuta, Ukpo, Allo-Dodogbaji &amp; others</div>
+    <div>Ugbedu · Itobe · Ajaokuta · Ukpo · Allo-Dodogbaji</div>
   </div>
 </footer>
+
 <script>
   const navToggle = document.getElementById('navToggle');
   const siteNav = document.getElementById('siteNav');
@@ -128,7 +191,69 @@
     const isOpen = siteNav.classList.toggle('open');
     navToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
   });
+  siteNav.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    siteNav.classList.remove('open');
+    navToggle.setAttribute('aria-expanded', 'false');
+  }));
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  async function loadExecutives() {
+    let list = [];
+    if (window.AdagborStore) {
+      const v = await AdagborStore.load("executives", []);
+      if (Array.isArray(v)) list = v;
+    }
+    renderExec(list);
+  }
+  function renderExec(list) {
+    list = (list || []).filter(e => e && (e.name || e.role));
+    const grid = document.getElementById('execGrid');
+    const empty = document.getElementById('emptyExec');
+    grid.innerHTML = '';
+    if (!list.length) { empty.style.display = 'block'; return; }
+    empty.style.display = 'none';
+    list.forEach(e => {
+      const phone = (e.phone || '').trim();
+      const email = (e.email || '').trim();
+      const card = document.createElement('div');
+      card.className = 'exec-card';
+      card.innerHTML = '<div class="role">' + escapeHtml(e.role || 'Officer') + '</div>' +
+        '<h3>' + escapeHtml(e.name || '—') + '</h3>' +
+        '<div class="branch">' + escapeHtml(e.branch || '') + '</div>' +
+        (phone ? '<div class="line">Phone: <a href="tel:' + escapeHtml(phone) + '">' + escapeHtml(phone) + '</a></div>' : '') +
+        (email ? '<div class="line">Email: <a href="mailto:' + escapeHtml(email) + '">' + escapeHtml(email) + '</a></div>' : '');
+      grid.appendChild(card);
+    });
+  }
+  loadExecutives();
+
+  async function loadPublicAnnouncements() {
+    let list = [];
+    if (window.AdagborStore) {
+      const v = await AdagborStore.load("announcements", []);
+      if (Array.isArray(v)) list = v;
+    }
+    list = (list || []).filter(a => a && a.active !== false);
+    const empty = document.getElementById('publicAnnEmpty');
+    const grid = document.getElementById('publicAnnList');
+    if (!grid) return;
+    if (!list.length) {
+      empty.style.display = 'block';
+      grid.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+    list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    grid.innerHTML = list.map(a =>
+      '<div class="card"><div class="meta">' + escapeHtml((a.createdAt || '').slice(0, 10)) + '</div>' +
+      '<h3>' + escapeHtml(a.title || '') + '</h3>' +
+      '<p>' + escapeHtml(a.body || '') + '</p></div>'
+    ).join('');
+  }
+  loadPublicAnnouncements();
+
 </script>
 </body>
 </html>
-
