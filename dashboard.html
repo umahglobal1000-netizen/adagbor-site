@@ -321,12 +321,19 @@
               <input id="payPeriodValue" onchange="renderMemberPayments()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
             </label>
           </div>
-          <p style="margin:0;font-size:0.75rem;color:#9a8f6f;">Voluntary donations to named members are not shown here (committee only).</p>
+          <p style="margin:0;font-size:0.75rem;color:#9a8f6f;">Voluntary donations are private between giver and receiver — only your own are shown below.</p>
         </div>
         <div id="payMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
         <div id="payTotalsBox" style="display:none;margin-bottom:16px;"></div>
         <div id="payList"></div>
         <p class="readonly-note">Your contribution records as entered by the committee</p>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="dir-toolbar"><span id="myDonCount">My voluntary donations</span></div>
+        <div id="myDonMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="myDonList"></div>
+        <p class="readonly-note">Voluntary donations you have given, with their purpose</p>
       </div>
     </div>
 
@@ -457,6 +464,7 @@ function switchTab(name) {
   }
   if (name === 'payments') {
     loadPaymentHistory();
+    loadMyDonations();
   }
   if (name === 'attendance') loadMyAttendance();
   if (name === 'resolutions') loadResolutions();
@@ -767,6 +775,35 @@ async function loadPaymentHistory() {
 
   await fillPayTypeFilter(cachedContribTypes, cachedMemberPayments);
   renderMemberPayments();
+}
+
+async function loadMyDonations() {
+  const countEl = document.getElementById("myDonCount");
+  const msg = document.getElementById("myDonMsg");
+  const listEl = document.getElementById("myDonList");
+  if (!countEl) return;
+  msg.style.display = "none";
+  listEl.innerHTML = "";
+  if (!currentMember) return;
+
+  const all = await loadAllPayments();
+  const mine = all
+    .filter(p => matchesCurrentMember(p, currentMember))
+    .filter(p => isDonationPayment(p))
+    .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+
+  countEl.textContent = mine.length + " donation(s) given";
+  if (!mine.length) {
+    msg.style.display = "block";
+    msg.textContent = "You haven't recorded any voluntary donations yet.";
+    return;
+  }
+  listEl.innerHTML = mine.map(p => {
+    return '<div class="pay-row"><div><div class="type">To: ' + escapeHtml(p.beneficiaryName || "—") +
+      '</div><div class="meta">' + escapeHtml(p.date || "") +
+      (p.purpose ? " — " + escapeHtml(p.purpose) : "") +
+      '</div></div><div class="amt">' + Number(p.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div></div>';
+  }).join("");
 }
 
 
