@@ -228,7 +228,29 @@
         </div>
         <div class="field">
           <label>Date of birth</label>
-          <input type="date" id="m-dob">
+          <div style="display:flex; gap:8px;">
+            <select id="m-dob-day" style="flex:1;">
+              <option value="">Day</option>
+            </select>
+            <select id="m-dob-month" style="flex:1.4;">
+              <option value="">Month</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+            <select id="m-dob-year" style="flex:1;">
+              <option value="">Year</option>
+            </select>
+          </div>
         </div>
 
         <div class="field">
@@ -304,13 +326,37 @@
   // Submits the membership form to the adagbor-api Worker, which writes to D1.
   const API_URL = "https://adagbor-api.umahglobal1000.workers.dev/api/members";
 
+  // Populate Day and Year dropdowns for date of birth
+  (function populateDobDropdowns(){
+    const daySelect = document.getElementById('m-dob-day');
+    const yearSelect = document.getElementById('m-dob-year');
+    for (let d = 1; d <= 31; d++) {
+      const opt = document.createElement('option');
+      opt.value = String(d).padStart(2, '0');
+      opt.textContent = d;
+      daySelect.appendChild(opt);
+    }
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 110; y--) {
+      const opt = document.createElement('option');
+      opt.value = String(y);
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+  })();
+
   document.getElementById('membershipForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const v = id => document.getElementById(id).value.trim();
     const payload = {
       full_name: v('m-name'),
       gender: v('m-gender'),
-      date_of_birth: v('m-dob'),
+      date_of_birth: (() => {
+        const d = document.getElementById('m-dob-day').value;
+        const m = document.getElementById('m-dob-month').value;
+        const y = document.getElementById('m-dob-year').value;
+        return (d && m && y) ? `${y}-${m}-${d}` : '';
+      })(),
       branch: v('m-branch'),
       occupation: v('m-occupation'),
       phone: v('m-phone'),
