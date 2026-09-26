@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Dashboard — Adagbor Descendant Association</title>
+<style>
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f5f0e1;
+    color: #2f2a1f;
+    margin: 0;
+    padding: 30px 16px;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+  }
+  h1 { font-size: 1.4rem; color: #4a3f22; margin: 0; }
+  button#logout {
+    background: none;
+    border: 1px solid #a33;
+    color: #a33;
+    padding: 6px 14px;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .card {
+    background: #fff;
+    border: 1px solid #d8cfae;
+    border-radius: 8px;
+    padding: 24px;
+  }
+  .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee6d0; }
+  .row:last-child { border-bottom: none; }
+  .row span:first-child { color: #7a6f4f; }
+  .row span:last-child { font-weight: bold; }
+  #status-banner {
+    padding: 10px 16px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    font-size: 0.9rem;
+  }
+  #loading, #error { text-align: center; color: #7a6f4f; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>My Membership</h1>
+    <button id="logout">Log out</button>
+  </header>
+
+  <div id="loading">Loading your details...</div>
+  <div id="error" style="display:none" class="error"></div>
+  <div id="content" style="display:none">
+    <div class="card" id="fields"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+
+async function loadMe() {
+  try {
+    const res = await fetch(`${API_BASE}/api/member/me`, { credentials: "include" });
+    if (res.status === 401) {
+      window.location.href = "login.html";
+      return;
+    }
+    const data = await res.json();
+    document.getElementById("loading").style.display = "none";
+
+    if (!res.ok) {
+      document.getElementById("error").textContent = data.error || "Could not load your details.";
+      document.getElementById("error").style.display = "block";
+      return;
+    }
+
+    const m = data.member;
+    const fields = document.getElementById("fields");
+    fields.innerHTML = [
+      ["Full name", m.full_name],
+      ["Gender", m.gender],
+      ["Date of birth", m.dob],
+      ["Branch", m.branch],
+      ["Occupation", m.occupation],
+      ["Phone", m.phone],
+      ["Email", m.email],
+      ["Address", m.address],
+      ["Next of kin", m.next_of_kin_name],
+      ["Next of kin phone", m.next_of_kin_phone],
+      ["Membership status", m.status],
+    ].map(([label, value]) =>
+      `<div class="row"><span>${label}</span><span>${value || "—"}</span></div>`
+    ).join("");
+
+    document.getElementById("content").style.display = "block";
+  } catch (err) {
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("error").textContent = "Network error.";
+    document.getElementById("error").style.display = "block";
+  }
+}
+
+document.getElementById("logout").addEventListener("click", async () => {
+  await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "include" });
+  window.location.href = "login.html";
+});
+
+loadMe();
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Member Login — Adagbor Descendant Association</title>
+<style>
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background: #f5f0e1;
+    color: #2f2a1f;
+    margin: 0;
+    padding: 40px 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .card {
+    background: #ffffff;
+    border: 1px solid #d8cfae;
+    border-radius: 8px;
+    padding: 32px;
+    max-width: 400px;
+    width: 100%;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 4px;
+    color: #4a3f22;
+  }
+  p.sub {
+    color: #7a6f4f;
+    margin-top: 0;
+    margin-bottom: 24px;
+    font-size: 0.95rem;
+  }
+  label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: bold;
+  }
+  input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 18px;
+    border: 1px solid #c9bd93;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 1rem;
+  }
+  button {
+    width: 100%;
+    padding: 12px;
+    background: #5a4a1f;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 1rem;
+    cursor: pointer;
+  }
+  button:hover { background: #443709; }
+  #message {
+    margin-top: 16px;
+    font-size: 0.9rem;
+    text-align: center;
+  }
+  .error { color: #a33; }
+  .success { color: #2a7a2a; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Member Login</h1>
+    <p class="sub">Ancestral home: Ugbedu, Kogi State</p>
+
+    <form id="loginForm">
+      <label for="identifier">Email or phone number</label>
+      <input type="text" id="identifier" required autocomplete="username">
+
+      <label for="password">Password</label>
+      <input type="password" id="password" required autocomplete="current-password">
+
+      <button type="submit">Log in</button>
+    </form>
+
+    <div id="message"></div>
+  </div>
+
+<script>
+const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
+
+document.getElementById("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const identifier = document.getElementById("identifier").value.trim();
+  const password = document.getElementById("password").value;
+  const msg = document.getElementById("message");
+  msg.textContent = "Logging in...";
+  msg.className = "";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ identifier, password }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      msg.textContent = data.error || "Login failed.";
+      msg.className = "error";
+      return;
+    }
+
+    msg.textContent = "Success! Redirecting...";
+    msg.className = "success";
+    window.location.href = "dashboard.html";
+  } catch (err) {
+    msg.textContent = "Network error. Please try again.";
+    msg.className = "error";
+  }
+});
+</script>
+</body>
+</html>
