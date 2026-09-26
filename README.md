@@ -1,6 +1,6 @@
-# Adagbor Descendant Association — website
+# Adagbor Descendant Association — website + API
 
-## Files
+## Website files
 
 | File | Purpose |
 |------|---------|
@@ -9,26 +9,22 @@
 | `login.html` | Login |
 | `dashboard.html` | Member area |
 | `admin.html` | Admin area |
-| `data-sync.js` | Auto-sync admin → members (no manual export) |
-| `worker-store-snippet.js` | Routes to add to your Cloudflare Worker |
+| `data-sync.js` | Auto-sync admin → members |
+| `Adagbor.js` | **Cloudflare Worker API** (upload/deploy this) |
 
-## Automatic sync (no export)
+## Deploy API (`Adagbor.js`)
 
-Admin saves (announcements, resolutions, attendance, payments, executives, contribution types) are written to the API automatically. Members and the public page load the same data.
+1. You already created `app_store` in D1 (done).
+2. Optional for photos — in D1 Console:
+   ```sql
+   ALTER TABLE members ADD COLUMN photo TEXT;
+   ```
+3. Replace your Worker code with `Adagbor.js` and **Save & Deploy**.
+4. Confirm bindings: `DB`, `ADMIN_KEY`, `RESEND_API_KEY`.
 
-**One-time setup on the API worker**
+## Auto-sync (no JSON export)
 
-1. In D1, run:
-```sql
-CREATE TABLE IF NOT EXISTS app_store (
-  key TEXT PRIMARY KEY,
-  value TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-```
+Admin saves → `PUT /api/admin/store/:key` → D1 `app_store`  
+Members/public → `GET /api/store/:key`
 
-2. Add the GET `/api/store/:key` and PUT `/api/admin/store/:key` routes from `worker-store-snippet.js` to your existing worker (same `ADMIN_KEY` and `DB` binding).
-
-Until those routes exist, data still saves on the admin device only (local fallback).
-
-API: `https://adagbor-api.umahglobal1000.workers.dev`
+Keys used: `announcements`, `resolutions`, `attendance`, `payments`, `contribution_types`, `executives`
