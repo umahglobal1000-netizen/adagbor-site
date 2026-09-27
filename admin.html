@@ -310,8 +310,8 @@
       </div>
 
       <div class="panel">
-        <h2>Totals by contribution</h2>
-        <p class="hint">See total monthly dues, registration fees, donations and other items for a chosen month or year.</p>
+        <h2>Combined totals (all members)</h2>
+        <p class="hint">Sums every member’s payments: total monthly dues, registration fees, donations and other contributions for the selected month or year.</p>
         <div class="form-row three">
           <div>
             <label for="totMode">Period type</label>
@@ -329,7 +329,7 @@
         </div>
         <div id="contribTotalsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px;"></div>
         <p id="contribTotalsGrand" style="margin-top:14px;font-size:16px;font-weight:700;color:#1e4d2b;"></p>
-        <p style="margin:6px 0 0;font-size:12px;color:#888;">Donations are shown as their own total. Combined total includes all types for the selected period.</p>
+        <p id="contribTotalsMeta" style="margin:6px 0 0;font-size:12px;color:#888;"></p>
       </div>
 
       <div class="panel">
@@ -1499,39 +1499,69 @@ function paymentInTotalsPeriod(p, mode, value) {
   if (!mode || mode === "all" || !value) return true;
   const date = String(p.date || "");
   const period = String(p.period || "");
-  if (mode === "day") return date === value || date.slice(0, 10) === value;
-  if (mode === "month") return date.slice(0, 7) === value || period === value || period.slice(0, 7) === value;
-  if (mode === "year") return date.slice(0, 4) === value || period.slice(0, 4) === value;
+  // Monthly dues: prefer the "period" month they cover (e.g. 2026-09)
+  const isMonthly = p.kind === "monthly" || p.typeId === "monthly";
+  if (mode === "day") {
+    return date === value || date.slice(0, 10) === value;
+  }
+  if (mode === "month") {
+    if (isMonthly) {
+      return period === value || period.slice(0, 7) === value || date.slice(0, 7) === value;
+    }
+    return date.slice(0, 7) === value || period === value || period.slice(0, 7) === value;
+  }
+  if (mode === "year") {
+    if (isMonthly) {
+      return period.slice(0, 4) === value || date.slice(0, 4) === value;
+    }
+    return date.slice(0, 4) === value || period.slice(0, 4) === value;
+  }
   return true;
 }
 
 function contributionTypeLabel(p) {
   if (!p) return "Other";
   if (p.kind === "donation" || p.typeId === "donation") return "Voluntary donations";
-  if (p.typeId === "monthly" || p.kind === "monthly") return "Monthly fee";
+  if (p.typeId === "monthly" || p.kind === "monthly") return "Monthly dues";
   if (p.typeId === "registration") return "Registration fee";
   return p.typeName || p.typeId || "Other";
+}
+
+function memberKeyFromPayment(p) {
+  if (!p) return "";
+  if (p.memberId != null) return "id:" + p.memberId;
+  if (p.memberKey) return String(p.memberKey);
+  if (p.memberPhone) return "ph:" + String(p.memberPhone).trim();
+  if (p.memberName) return "nm:" + String(p.memberName).trim().toLowerCase();
+  return "";
 }
 
 function renderContributionTotals() {
   const grid = document.getElementById("contribTotalsGrid");
   const grandEl = document.getElementById("contribTotalsGrand");
+  const metaEl = document.getElementById("contribTotalsMeta");
   if (!grid) return;
 
   const mode = (document.getElementById("totMode") || {}).value || "month";
   const value = (document.getElementById("totValue") || {}).value || "";
+  // All members' payment records for this period
   const all = getPayments().filter(p => paymentInTotalsPeriod(p, mode, value));
 
   const byType = {};
+  const membersOverall = new Set();
   all.forEach(p => {
     const label = contributionTypeLabel(p);
-    if (!byType[label]) byType[label] = { total: 0, count: 0 };
+    if (!byType[label]) byType[label] = { total: 0, count: 0, members: new Set() };
     byType[label].total += Number(p.amount) || 0;
     byType[label].count += 1;
+    const mk = memberKeyFromPayment(p);
+    if (mk) {
+      byType[label].members.add(mk);
+      membersOverall.add(mk);
+    }
   });
 
-  // Preferred order for common types
-  const preferred = ["Monthly fee", "Registration fee", "Voluntary donations"];
+  const preferred = ["Monthly dues", "Registration fee", "Voluntary donations"];
   const names = Object.keys(byType).sort((a, b) => {
     const ia = preferred.indexOf(a);
     const ib = preferred.indexOf(b);
@@ -1545,24 +1575,31 @@ function renderContributionTotals() {
     : mode === "year" ? "year " + value : value;
 
   if (!names.length) {
-    grid.innerHTML = '<div style="color:#888;font-size:13px;">No payments for this period.</div>';
-    if (grandEl) grandEl.textContent = "Combined total (" + periodText + "): ₦0";
+    grid.innerHTML = '<div style="color:#888;font-size:13px;">No payments from any member for this period.</div>';
+    if (grandEl) grandEl.textContent = "Combined total — all members (" + periodText + "): ₦0";
+    if (metaEl) metaEl.textContent = "Includes monthly dues, registration, donations and other contribution types.";
     return;
   }
 
   grid.innerHTML = names.map(name => {
     const rec = byType[name];
+    const nMembers = rec.members ? rec.members.size : 0;
     return '<div class="total-card">' +
-      '<div class="label">Total ' + escapeHtml(name) + '</div>' +
+      '<div class="label">Combined ' + escapeHtml(name) + '</div>' +
       '<div class="value">₦' + (rec.total || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>' +
-      '<div class="sub">' + (rec.count || 0) + ' payment(s) · ' + escapeHtml(periodText) + '</div>' +
+      '<div class="sub">' + (rec.count || 0) + ' payment(s) · ' + nMembers + ' member(s)</div>' +
+      '<div class="sub">' + escapeHtml(periodText) + ' · all members</div>' +
       '</div>';
   }).join("");
 
   const grand = names.reduce((s, n) => s + (byType[n].total || 0), 0);
   if (grandEl) {
-    grandEl.textContent = "Combined total (" + periodText + "): ₦" +
+    grandEl.textContent = "Combined total — all members (" + periodText + "): ₦" +
       grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  if (metaEl) {
+    metaEl.textContent = membersOverall.size + " member(s) had payments in this period. " +
+      "Monthly dues use the fee period month; other types use payment date. Donations are included in the combined total.";
   }
 }
 
