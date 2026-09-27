@@ -183,6 +183,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 8h17"/><circle cx="8" cy="13.6" r="1.7"/><path d="M6 17c.3-1.6 1.6-2.6 2-2.6s1.7 1 2 2.6"/><path d="M13 12h5M13 15h5"/></svg>
         <span>Executive contacts</span>
       </button>
+      <button type="button" class="tab" data-tab="sms" onclick="switchTab('sms')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16v9.5a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H5.5A1.5 1.5 0 0 1 4 16z"/><path d="M8 10.5h8M8 13.5h5"/></svg>
+        <span>SMS</span>
+      </button>
     </div>
 
     <!-- Applications -->
@@ -553,6 +557,47 @@
         </table>
       </div>
     </div>
+
+    <!-- SMS (KudiSMS promotional) -->
+    <div id="tab-sms" class="tab-panel">
+      <div class="panel">
+        <h2>Send SMS</h2>
+        <p class="hint">
+          Promotional route via KudiSMS (sender: <strong>ADAGBOR</strong>).
+          Numbers on DND will not receive the message. Keep messages short (about 160 characters per page).
+        </p>
+
+        <div class="form-row">
+          <div>
+            <label for="smsAudience">Send to</label>
+            <select id="smsAudience" onchange="onSmsAudienceChange()">
+              <option value="all">All approved members</option>
+              <option value="phones">Paste phone numbers</option>
+            </select>
+          </div>
+          <div id="smsPhonesWrap" style="display:none;">
+            <label for="smsPhones">Phone numbers</label>
+            <input type="text" id="smsPhones" placeholder="0803…, 0701…, 234… (comma or space separated)">
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label for="smsMessage" style="display:block;font-size:12px;font-weight:600;margin-bottom:4px;color:#444;">Message</label>
+          <textarea id="smsMessage" rows="4" maxlength="480" placeholder="e.g. Adagbor Association: general assembly at Ugbedu on 15 Oct. Details on the portal."
+            style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical;"
+            oninput="updateSmsCharCount()"></textarea>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px;color:#666;">
+            <span id="smsCharCount">0 / 160 (1 page)</span>
+            <span>Max ~3 pages</span>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="actionBtn" id="smsSendBtn" onclick="sendAdminSms()">Send SMS</button>
+        </div>
+        <div id="smsMsg" style="font-size:13px;margin-top:10px;"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -683,6 +728,7 @@ function switchTab(name) {
   if (name === "resolutions") renderResolutionsAdmin();
   if (name === "announcements") renderAnnouncementsAdmin();
   if (name === "gallery") renderGalleryAdmin();
+  if (name === "sms") updateSmsCharCount();
 }
 
 async function login() {
@@ -1845,6 +1891,90 @@ function loadAnnouncementTicker() {
   ticker.style.display = "block";
   const duration = Math.max(16, Math.min(60, Math.round(text.length / 8)));
   track.style.animationDuration = duration + "s";
+}
+
+/* ---- SMS (KudiSMS promotional via Worker) ---- */
+
+function onSmsAudienceChange() {
+  const mode = document.getElementById("smsAudience").value;
+  document.getElementById("smsPhonesWrap").style.display = mode === "phones" ? "block" : "none";
+}
+
+function updateSmsCharCount() {
+  const el = document.getElementById("smsMessage");
+  const countEl = document.getElementById("smsCharCount");
+  if (!el || !countEl) return;
+  const n = el.value.length;
+  const pages = n === 0 ? 0 : Math.ceil(n / 160);
+  countEl.textContent = n + " / 160 (" + pages + " page" + (pages === 1 ? "" : "s") + ")";
+}
+
+async function sendAdminSms() {
+  const msgEl = document.getElementById("smsMsg");
+  const btn = document.getElementById("smsSendBtn");
+  const message = (document.getElementById("smsMessage").value || "").trim();
+  if (!message) {
+    msgEl.style.color = "#b00020";
+    msgEl.textContent = "Enter a message first.";
+    return;
+  }
+  if (!adminKey) {
+    msgEl.style.color = "#b00020";
+    msgEl.textContent = "Not logged in.";
+    return;
+  }
+
+  const audience = document.getElementById("smsAudience").value;
+  let payload = { message };
+
+  if (audience === "phones") {
+    const raw = (document.getElementById("smsPhones").value || "").trim();
+    const phones = raw.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+    if (!phones.length) {
+      msgEl.style.color = "#b00020";
+      msgEl.textContent = "Paste at least one phone number.";
+      return;
+    }
+    payload.phones = phones;
+  } else {
+    payload.allApproved = true;
+  }
+
+  const confirmText = audience === "phones"
+    ? "Send this SMS to the pasted numbers?"
+    : "Send this SMS to ALL approved members with a phone number?";
+  if (!confirm(confirmText + "\n\n" + message.slice(0, 120) + (message.length > 120 ? "…" : ""))) {
+    return;
+  }
+
+  btn.disabled = true;
+  msgEl.style.color = "#555";
+  msgEl.textContent = "Sending…";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/sms`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Admin-Key": adminKey,
+      },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.ok === false) {
+      msgEl.style.color = "#b00020";
+      msgEl.textContent = "Failed: " + (data.error || data.detail || res.statusText || "unknown error");
+      return;
+    }
+    const sent = data.sent != null ? data.sent : (data.results || []).reduce((s, r) => s + (r.count || 0), 0);
+    msgEl.style.color = "#155724";
+    msgEl.textContent = "Sent successfully" + (sent ? " to about " + sent + " number(s)." : ".");
+  } catch (err) {
+    msgEl.style.color = "#b00020";
+    msgEl.textContent = "Network error: " + (err.message || String(err));
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
