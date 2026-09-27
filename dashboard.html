@@ -22,6 +22,29 @@
     gap: 12px;
   }
   h1 { font-size: 1.4rem; color: #4a3f22; margin: 0; }
+  .ann-ticker {
+    background: #4a3f22;
+    color: #f5f0e1;
+    overflow: hidden;
+    white-space: nowrap;
+    border-radius: 6px;
+    margin-bottom: 18px;
+    padding: 9px 0;
+    cursor: pointer;
+  }
+  .ann-ticker-track {
+    display: inline-block;
+    padding-left: 100%;
+    will-change: transform;
+    animation: ann-scroll 28s linear infinite;
+    font-size: 0.9rem;
+    letter-spacing: 0.2px;
+  }
+  .ann-ticker:hover .ann-ticker-track { animation-play-state: paused; }
+  @keyframes ann-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
   button#logout {
     background: none;
     border: 1px solid #a33;
@@ -246,6 +269,10 @@
     <h1>My Membership</h1>
     <button id="logout">Log out</button>
   </header>
+
+  <div id="annTicker" class="ann-ticker" style="display:none;" onclick="switchTab('announcements')" title="Tap to view all announcements">
+    <div class="ann-ticker-track" id="annTickerTrack"></div>
+  </div>
 
   <div id="loading">Loading your details...</div>
   <div id="error" style="display:none" class="error"></div>
@@ -1062,12 +1089,41 @@ async function loadAnnouncements() {
 }
 
 
+async function loadAnnouncementTicker() {
+  const ticker = document.getElementById('annTicker');
+  const track = document.getElementById('annTickerTrack');
+  if (!ticker || !track) return;
+  let list = [];
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load("announcements", []);
+    if (Array.isArray(v)) list = v;
+  } else {
+    try {
+      const raw = localStorage.getItem('adagbor_announcements');
+      if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) list = p; }
+    } catch (e) {}
+  }
+  list = list.filter(a => a.active !== false)
+    .slice().sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+  if (!list.length) {
+    ticker.style.display = 'none';
+    return;
+  }
+  const text = list.map(a => (a.title || '').trim()).filter(Boolean).join('     •     ');
+  track.textContent = text;
+  ticker.style.display = 'block';
+  // Longer text scrolls a bit slower so it stays readable
+  const duration = Math.max(16, Math.min(60, Math.round(text.length / 8)));
+  track.style.animationDuration = duration + 's';
+}
+
 document.getElementById("logout").addEventListener("click", async () => {
   await fetch(`${API_BASE}/api/logout`, { method: "POST", credentials: "include" });
   window.location.href = "login.html";
 });
 
 loadMe();
+loadAnnouncementTicker();
 </script>
 </body>
 </html>
