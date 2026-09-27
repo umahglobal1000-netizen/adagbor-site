@@ -182,6 +182,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h2.5l6 3.5v-11l-6 3.5z"/><path d="M15 8.5c1.3.8 2 2 2 3.5s-.7 2.7-2 3.5"/><path d="M9 17v2.5c0 .8-.7 1.5-1.5 1.5S6 20.3 6 19.5V17"/></svg>
         <span>Announcements</span>
       </button>
+      <button type="button" class="tab" data-tab="events" onclick="switchTab('events')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 9.5h17"/><path d="M8 3v4M16 3v4"/><path d="M8.5 14h3M14 14h3"/></svg>
+        <span>Events</span>
+      </button>
       <button type="button" class="tab" data-tab="gallery" onclick="switchTab('gallery')">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M9 8l4 2.5-4 2.5z" fill="currentColor" stroke="none"/><path d="M17 9l4-2.3v10.6l-4-2.3"/></svg>
         <span>Gallery</span>
@@ -468,6 +472,54 @@
           <thead><tr><th>Status</th><th>Title</th><th>Created</th><th></th></tr></thead>
           <tbody id="annListBody"></tbody>
         </table>
+      </div>
+    </div>
+
+    <!-- Events -->
+    <div id="tab-events" class="tab-panel">
+      <div class="panel">
+        <h2>Add / edit event</h2>
+        <p class="hint">Shown on the public homepage under Events. Members and visitors can read only.</p>
+        <input type="hidden" id="evtId">
+        <div class="form-row">
+          <div>
+            <label for="evtTitle">Title</label>
+            <input type="text" id="evtTitle" placeholder="e.g. General assembly">
+          </div>
+          <div>
+            <label for="evtMeta">Label / timing</label>
+            <input type="text" id="evtMeta" placeholder="e.g. ANNUAL · 2027 or BRANCH · TBA">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="evtDate">Date (optional)</label>
+            <input type="date" id="evtDate">
+          </div>
+          <div>
+            <label for="evtActive">Publish</label>
+            <select id="evtActive">
+              <option value="yes">Yes — show on site</option>
+              <option value="no">No — draft</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <div>
+            <label for="evtBody">Description</label>
+            <textarea id="evtBody" rows="3" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:14px;" placeholder="Short description of the gathering or meeting..."></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="actionBtn" onclick="saveEvent()">Save event</button>
+          <button type="button" class="actionBtn secondary" onclick="clearEventForm()">Clear form</button>
+        </div>
+        <div id="evtMsg" style="font-size:13px;margin-top:10px;color:#155724;"></div>
+      </div>
+      <div class="panel">
+        <h2>Event list</h2>
+        <div class="toolbar"><span id="evtCount">0 event(s)</span></div>
+        <div id="evtListBody"></div>
       </div>
     </div>
 
@@ -843,6 +895,7 @@ function switchTab(name) {
   if (name === "resolutions") renderResolutionsAdmin();
   if (name === "announcements") renderAnnouncementsAdmin();
   if (name === "gallery") renderGalleryAdmin();
+  if (name === "events") renderEventsAdmin();
   if (name === "sms") updateSmsCharCount();
   if (name === "expenses") initExpensesTab();
 }
@@ -1900,6 +1953,129 @@ function renderAnnouncementsAdmin() {
     </td></tr>`).join("");
 }
 
+
+/* ---- Events ---- */
+const EVT_KEY = "adagbor_events";
+
+function getEvents() {
+  try {
+    const r = localStorage.getItem(EVT_KEY);
+    const a = r ? JSON.parse(r) : [];
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+
+function setEvents(list) {
+  localStorage.setItem(EVT_KEY, JSON.stringify(list));
+  if (window.AdagborStore) AdagborStore.save("events", list, adminKey);
+}
+
+function clearEventForm() {
+  document.getElementById("evtId").value = "";
+  document.getElementById("evtTitle").value = "";
+  document.getElementById("evtMeta").value = "";
+  document.getElementById("evtDate").value = "";
+  document.getElementById("evtBody").value = "";
+  document.getElementById("evtActive").value = "yes";
+  const msg = document.getElementById("evtMsg");
+  if (msg) { msg.textContent = ""; msg.style.color = "#155724"; }
+}
+
+function saveEvent() {
+  const msg = document.getElementById("evtMsg");
+  const title = (document.getElementById("evtTitle").value || "").trim();
+  const body = (document.getElementById("evtBody").value || "").trim();
+  const meta = (document.getElementById("evtMeta").value || "").trim();
+  const date = document.getElementById("evtDate").value || "";
+  const active = document.getElementById("evtActive").value === "yes";
+  if (!title || !body) {
+    msg.style.color = "#b00020";
+    msg.textContent = "Title and description are required.";
+    return;
+  }
+  const id = document.getElementById("evtId").value || ("ev_" + Date.now());
+  let list = getEvents();
+  const entry = {
+    id, title, body, meta, date, active,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const i = list.findIndex(x => x.id === id);
+  if (i >= 0) {
+    entry.createdAt = list[i].createdAt || entry.createdAt;
+    list[i] = entry;
+  } else {
+    list.push(entry);
+  }
+  setEvents(list);
+  clearEventForm();
+  renderEventsAdmin();
+  msg.style.color = "#155724";
+  msg.textContent = "Event saved.";
+}
+
+function editEvent(id) {
+  const e = getEvents().find(x => x.id === id);
+  if (!e) return;
+  document.getElementById("evtId").value = e.id;
+  document.getElementById("evtTitle").value = e.title || "";
+  document.getElementById("evtMeta").value = e.meta || "";
+  document.getElementById("evtDate").value = e.date || "";
+  document.getElementById("evtBody").value = e.body || "";
+  document.getElementById("evtActive").value = e.active !== false ? "yes" : "no";
+  switchTab("events");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function deleteEvent(id) {
+  if (!confirm("Delete this event?")) return;
+  setEvents(getEvents().filter(x => x.id !== id));
+  renderEventsAdmin();
+}
+
+function renderEventsAdmin() {
+  const body = document.getElementById("evtListBody");
+  const countEl = document.getElementById("evtCount");
+  if (!body) return;
+
+  const finish = (list) => {
+    list = (list || []).slice().sort((a, b) =>
+      String(b.date || b.createdAt || "").localeCompare(String(a.date || a.createdAt || ""))
+    );
+    if (countEl) countEl.textContent = list.length + " event(s)";
+    if (!list.length) {
+      body.innerHTML = '<p style="color:#888;font-size:14px;">No events yet. Add one above.</p>';
+      return;
+    }
+    body.innerHTML = list.map(e => {
+      const id = escapeHtml(e.id);
+      return '<div style="border:1px solid #eee;border-radius:8px;padding:14px;margin-bottom:10px;background:#fafafa;">' +
+        '<div style="font-size:12px;color:#888;margin-bottom:4px;">' +
+          (e.active !== false ? "Published" : "Draft") +
+          (e.meta ? " · " + escapeHtml(e.meta) : "") +
+          (e.date ? " · " + escapeHtml(e.date) : "") +
+        '</div>' +
+        '<div style="font-weight:600;font-size:15px;color:#1e4d2b;">' + escapeHtml(e.title || "") + '</div>' +
+        '<div style="font-size:13px;color:#555;margin-top:6px;">' + escapeHtml(e.body || "") + '</div>' +
+        '<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;">' +
+          '<button type="button" class="actionBtn secondary" onclick="editEvent(\'' + id + '\')">Edit</button>' +
+          '<button type="button" class="actionBtn danger" onclick="deleteEvent(\'' + id + '\')">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  };
+
+  if (window.AdagborStore) {
+    AdagborStore.load("events", getEvents()).then(v => {
+      if (Array.isArray(v)) {
+        localStorage.setItem(EVT_KEY, JSON.stringify(v));
+        finish(v);
+      } else finish(getEvents());
+    }).catch(() => finish(getEvents()));
+  } else {
+    finish(getEvents());
+  }
+}
 
 /* ---- Gallery ---- */
 const GAL_KEY = "adagbor_gallery";

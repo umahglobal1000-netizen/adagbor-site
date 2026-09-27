@@ -225,11 +225,8 @@
     <div class="hero-entry"><span class="dot"></span> Gatherings &amp; meetings</div>
     <h2>When the family meets</h2>
     <p class="sub">From annual conventions to branch meetings — the moments we come together.</p>
-    <div class="card-grid">
-      <div class="card"><div class="meta">ANNUAL · 2027</div><h3>General assembly</h3><p>Full association meeting at Ugbedu. Register review, fund report, and elections as due.</p></div>
-      <div class="card"><div class="meta">BRANCH · TBA</div><h3>Branch meetings</h3><p>Local sittings ahead of the general assembly.</p></div>
-      <div class="card"><div class="meta">ONGOING</div><h3>Membership drive</h3><p>Entry to the 2027 register remains open for descendants of every branch.</p></div>
-    </div>
+    <div id="publicEventsEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No events published yet.</div>
+    <div class="card-grid" id="publicEventsList"></div>
   </div>
 </section>
 
@@ -329,6 +326,31 @@
     ).join('');
   }
   loadPublicAnnouncements();
+
+  async function loadPublicEvents() {
+    let list = [];
+    if (window.AdagborStore) {
+      const v = await AdagborStore.load("events", []);
+      if (Array.isArray(v)) list = v;
+    }
+    list = (list || []).filter(e => e && e.active !== false);
+    const empty = document.getElementById('publicEventsEmpty');
+    const grid = document.getElementById('publicEventsList');
+    if (!grid) return;
+    if (!list.length) {
+      if (empty) empty.style.display = 'block';
+      grid.innerHTML = '';
+      return;
+    }
+    if (empty) empty.style.display = 'none';
+    list.sort((a, b) => String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || '')));
+    grid.innerHTML = list.map(e =>
+      '<div class="card"><div class="meta">' + escapeHtml(e.meta || (e.date || 'EVENT')) + '</div>' +
+      '<h3>' + escapeHtml(e.title || '') + '</h3>' +
+      '<p>' + escapeHtml(e.body || '') + '</p></div>'
+    ).join('');
+  }
+  loadPublicEvents();
 
   function galVideoEmbed(url) {
     url = String(url || '').trim();
