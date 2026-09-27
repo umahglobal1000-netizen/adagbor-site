@@ -268,7 +268,6 @@
         <p class="hint">These appear on each member’s dashboard under Payment history.</p>
         <div class="toolbar">
           <span id="payHistoryCount"></span>
-          <button type="button" class="actionBtn secondary" onclick="exportPaymentsJson()">Export payments JSON</button>
         </div>
         <div class="tableScroll">
           <table>
@@ -318,7 +317,6 @@
           <div style="display:flex;align-items:flex-end;gap:8px;">
             <button type="button" class="actionBtn secondary" onclick="markAllAttendance('present')">All present</button>
             <button type="button" class="actionBtn secondary" onclick="markAllAttendance('absent')">All absent</button>
-            <button type="button" class="actionBtn secondary" onclick="exportAttendanceJson()">Export JSON</button>
             <button type="button" class="actionBtn danger" onclick="deleteAttendanceSession()">Delete session</button>
           </div>
         </div>
@@ -357,7 +355,6 @@
         <div class="form-actions">
           <button type="button" class="actionBtn" onclick="saveResolution()">Save resolution</button>
           <button type="button" class="actionBtn secondary" onclick="clearResolutionForm()">Clear</button>
-          <button type="button" class="actionBtn secondary" onclick="exportResolutionsJson()">Export JSON</button>
         </div>
         <div id="resMsg" style="font-size:13px;margin-top:8px;color:#155724;"></div>
       </div>
@@ -394,7 +391,6 @@
         <div class="form-actions">
           <button type="button" class="actionBtn" onclick="saveAnnouncement()">Save announcement</button>
           <button type="button" class="actionBtn secondary" onclick="clearAnnouncementForm()">Clear</button>
-          <button type="button" class="actionBtn secondary" onclick="exportAnnouncementsJson()">Export JSON</button>
         </div>
         <div id="annMsg" style="font-size:13px;margin-top:8px;color:#155724;"></div>
       </div>
@@ -1195,15 +1191,6 @@ function deletePayment(id) {
   setContribMsg("Payment deleted.");
 }
 
-function exportPaymentsJson() {
-  const blob = new Blob([JSON.stringify(getPayments(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "adagbor-payments.json";
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 function initContributionsTab() {
   fillPayMemberSelect();
   fillBeneficiarySelect();
@@ -1364,14 +1351,6 @@ function setAttendanceMark(sessionId, key, status) {
   setAttMsg("Saved.");
 }
 
-function exportAttendanceJson() {
-  const blob = new Blob([JSON.stringify(getAttendance(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "adagbor-attendance.json"; a.click();
-  URL.revokeObjectURL(a.href);
-  setAttMsg("Downloaded attendance JSON. Upload with the site for members on other devices.");
-}
-
 function markAllAttendance(status) {
   const sessionId = document.getElementById("attSessionSelect").value;
   if (!sessionId) return;
@@ -1421,7 +1400,7 @@ function saveResolution() {
   setResolutions(list);
   clearResolutionForm();
   renderResolutionsAdmin();
-  document.getElementById("resMsg").textContent = "Resolution saved. Export JSON to publish for members.";
+  document.getElementById("resMsg").textContent = "Resolution saved.";
 }
 
 function editResolution(id) {
@@ -1458,13 +1437,6 @@ function renderResolutionsAdmin() {
     </td></tr>`).join("");
 }
 
-function exportResolutionsJson() {
-  const blob = new Blob([JSON.stringify(getResolutions(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "adagbor-resolutions.json"; a.click();
-  URL.revokeObjectURL(a.href);
-}
-
 /* ---- Announcements ---- */
 const ANN_KEY = "adagbor_announcements";
 function getAnnouncements() {
@@ -1498,7 +1470,7 @@ function saveAnnouncement() {
   setAnnouncements(list);
   clearAnnouncementForm();
   renderAnnouncementsAdmin();
-  document.getElementById("annMsg").textContent = "Saved. Export JSON and upload so the public page and members see it.";
+  document.getElementById("annMsg").textContent = "Saved.";
 }
 
 function editAnnouncement(id) {
@@ -1532,13 +1504,6 @@ function renderAnnouncementsAdmin() {
       <button type="button" class="actionBtn secondary" onclick="editAnnouncement('${escapeHtml(a.id)}')">Edit</button>
       <button type="button" class="actionBtn danger" onclick="deleteAnnouncement('${escapeHtml(a.id)}')">Delete</button>
     </td></tr>`).join("");
-}
-
-function exportAnnouncementsJson() {
-  const blob = new Blob([JSON.stringify(getAnnouncements(), null, 2)], { type: "application/json" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob); a.download = "adagbor-announcements.json"; a.click();
-  URL.revokeObjectURL(a.href);
 }
 
 
