@@ -712,11 +712,14 @@ async function fillPayTypeFilter(types, payments) {
   const prev = sel.value;
   const map = new Map();
   (types || []).forEach(t => {
-    if (t.kind === "donation" || t.id === "donation") return; // members: no donation type
-    map.set(t.id || t.name, t.name || t.id);
+    const isDonation = t.kind === "donation" || t.id === "donation";
+    map.set(t.id || t.name, isDonation ? "Donations" : (t.name || t.id));
   });
   (payments || []).forEach(p => {
-    if (isDonationPayment(p)) return;
+    if (isDonationPayment(p)) {
+      map.set("donation", "Donations");
+      return;
+    }
     const id = p.typeId || p.typeName;
     if (id && !map.has(id)) map.set(id, p.typeName || p.typeId);
   });
@@ -767,10 +770,8 @@ async function loadPaymentHistory() {
 
   const all = await loadAllPayments();
   cachedContribTypes = await loadContributionTypes();
-  // Exclude voluntary donations to members entirely from member view
   cachedMemberPayments = all
     .filter(p => matchesCurrentMember(p, currentMember))
-    .filter(p => !isDonationPayment(p))
     .sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
 
   await fillPayTypeFilter(cachedContribTypes, cachedMemberPayments);
@@ -818,24 +819,34 @@ function renderMemberPayments() {
   const mode = (document.getElementById("payPeriodMode") && document.getElementById("payPeriodMode").value) || "all";
   const periodVal = (document.getElementById("payPeriodValue") && document.getElementById("payPeriodValue").value) || "";
 
-  // Base: this member's non-donation payments
+  // Base: this member's non-donation payments (dues only)
   let base = (cachedMemberPayments || []).filter(p => !isDonationPayment(p));
   // Period filter for both totals and list
   const inPeriod = base.filter(p => paymentMatchesPeriod(p, mode, periodVal));
+  const donationsInPeriod = (cachedMemberPayments || [])
+    .filter(p => isDonationPayment(p) && paymentMatchesPeriod(p, mode, periodVal));
 
   // --- Total payment cards for each contribution item (for selected day/month/year) ---
   if (totalsBox) {
     const byType = {};
-    // Seed from admin types (exclude donation)
+    // Seed from admin types
     (cachedContribTypes || []).forEach(t => {
-      if (!t || t.kind === "donation" || t.id === "donation") return;
-      byType[t.name || t.id] = { id: t.id, total: 0, count: 0 };
+      if (!t) return;
+      const isDon = t.kind === "donation" || t.id === "donation";
+      const label = isDon ? "Donations" : (t.name || t.id);
+      const id = isDon ? "donation" : (t.id || t.name);
+      byType[label] = { id, total: 0, count: 0 };
     });
     inPeriod.forEach(p => {
       const name = p.typeName || p.typeId || "Other";
       if (!byType[name]) byType[name] = { id: p.typeId || name, total: 0, count: 0 };
       byType[name].total += Number(p.amount) || 0;
       byType[name].count += 1;
+    });
+    if (!byType["Donations"]) byType["Donations"] = { id: "donation", total: 0, count: 0 };
+    donationsInPeriod.forEach(p => {
+      byType["Donations"].total += Number(p.amount) || 0;
+      byType["Donations"].count += 1;
     });
 
     let names = Object.keys(byType).sort();
@@ -858,7 +869,9 @@ function renderMemberPayments() {
       : mode === "month" ? "month " + periodVal
       : mode === "year" ? "year " + periodVal : "");
 
-    const grand = names.reduce((s, n) => s + (byType[n].total || 0), 0);
+    const grand = names
+      .filter(n => byType[n].id !== "donation")
+      .reduce((s, n) => s + (byType[n].total || 0), 0);
 
     totalsBox.style.display = "block";
     totalsBox.innerHTML =
@@ -878,16 +891,20 @@ function renderMemberPayments() {
       '</div>' +
       '<div style="font-size:1rem;color:#5a4a1f;font-weight:bold;padding:8px 0 4px;border-top:1px solid #eee6d0;">Combined total: ' +
       grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>' +
-      '<p style="font-size:0.75rem;color:#9a8f6f;margin:6px 0 0;">Use Period (day / month / year) to search totals for that time. Voluntary donations to members are not included.</p>';
+      '<p style="font-size:0.75rem;color:#9a8f6f;margin:6px 0 0;">Use Period (day / month / year) to search totals for that time. Combined total covers dues only — voluntary donations are shown separately.</p>';
   }
 
   // --- Detail list (also apply contribution type filter) ---
-  let mine = inPeriod;
-  if (typeFilter) {
-    mine = mine.filter(p =>
+  let mine;
+  if (typeFilter === "donation") {
+    mine = donationsInPeriod;
+  } else if (typeFilter) {
+    mine = inPeriod.filter(p =>
       String(p.typeId || "") === typeFilter ||
       String(p.typeName || "") === typeFilter
     );
+  } else {
+    mine = inPeriod;
   }
 
   countEl.textContent = mine.length + " payment(s)";
@@ -912,8 +929,12 @@ function renderMemberPayments() {
   listEl.innerHTML = Object.keys(groups).sort().map(typeName => {
     const rows = groups[typeName].map(p => {
       let extra = "";
-      if (p.kind === "monthly" && p.period) extra = "Period: " + escapeHtml(p.period);
-      if (p.note) extra = (extra ? extra + " · " : "") + escapeHtml(p.note);
+      if (p.kind === "donation") {
+        extra = "To: " + escapeHtml(p.beneficiaryName || "—") + (p.purpose ? " — " + escapeHtml(p.purpose) : "");
+      } else {
+        if (p.kind === "monthly" && p.period) extra = "Period: " + escapeHtml(p.period);
+        if (p.note) extra = (extra ? extra + " · " : "") + escapeHtml(p.note);
+      }
       return '<div class="pay-row"><div><div class="type">' + escapeHtml(p.date || "") +
         '</div><div class="meta">' + (extra || "—") +
         '</div></div><div class="amt">' +
