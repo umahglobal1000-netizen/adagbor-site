@@ -191,6 +191,40 @@
     font-family: inherit;
     min-width: 180px;
   }
+  /* Payment filters: each dropdown stays in its own column */
+  .pay-filters {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px;
+    align-items: end;
+    width: 100%;
+  }
+  .pay-filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.8rem;
+    color: #7a6f4f;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .pay-filter-field select,
+  .pay-filter-field input {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 6px 8px;
+    border: 1px solid #c9bd93;
+    border-radius: 4px;
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+  @media (max-width: 560px) {
+    .pay-filters {
+      grid-template-columns: 1fr;
+    }
+  }
   .dir-list { display: flex; flex-direction: column; gap: 0; }
   .dir-item {
     display: flex;
@@ -327,25 +361,25 @@
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
             <span id="payCount">Loading…</span>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;">
-            <label style="font-size:0.8rem;color:#7a6f4f;display:flex;flex-direction:column;gap:4px;">
+          <div class="pay-filters">
+            <label class="pay-filter-field" for="payTypeFilter">
               Contribution
-              <select id="payTypeFilter" onchange="renderMemberPayments()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;min-width:160px;">
+              <select id="payTypeFilter" onchange="renderMemberPayments()">
                 <option value="">All contributions</option>
               </select>
             </label>
-            <label style="font-size:0.8rem;color:#7a6f4f;display:flex;flex-direction:column;gap:4px;">
+            <label class="pay-filter-field" for="payPeriodMode">
               Period
-              <select id="payPeriodMode" onchange="onPeriodModeChange()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
+              <select id="payPeriodMode" onchange="onPeriodModeChange()">
                 <option value="all">All time</option>
                 <option value="day">By day</option>
                 <option value="month">By month</option>
                 <option value="year">By year</option>
               </select>
             </label>
-            <label id="payPeriodValueWrap" style="font-size:0.8rem;color:#7a6f4f;display:none;flex-direction:column;gap:4px;">
+            <label class="pay-filter-field" id="payPeriodValueWrap" for="payPeriodValue" style="display:none;">
               <span id="payPeriodValueLabel">Date</span>
-              <input id="payPeriodValue" onchange="renderMemberPayments()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
+              <input id="payPeriodValue" onchange="renderMemberPayments()">
             </label>
           </div>
           <p style="margin:0;font-size:0.75rem;color:#9a8f6f;">Voluntary donations are private between giver and receiver — only your own are shown below.</p>
