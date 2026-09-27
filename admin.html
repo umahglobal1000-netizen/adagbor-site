@@ -202,6 +202,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v12H4z"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M9 12h6M9 15h4"/></svg>
         <span>Expenses</span>
       </button>
+      <button type="button" class="tab" data-tab="birthdays" onclick="switchTab('birthdays')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v3"/><path d="M8 8h8v3H8z"/><path d="M6 11h12v9H6z"/><path d="M9 14h.01M12 14h.01M15 14h.01"/></svg>
+        <span>Birthdays</span>
+      </button>
     </div>
 
     <!-- Applications -->
@@ -753,6 +757,35 @@
         <div id="expListBody"></div>
       </div>
     </div>
+
+    <!-- Birthdays -->
+    <div id="tab-birthdays" class="tab-panel">
+      <div class="panel">
+        <h2>Member birthdays</h2>
+        <p class="hint">
+          Matched from each member’s date of birth (month and day only).
+          Use <strong>Send birthday SMS</strong> to congratulate via KudiSMS (promotional). Members without a phone are skipped.
+        </p>
+        <div class="form-row three">
+          <div>
+            <label for="bdayRange">Show</label>
+            <select id="bdayRange" onchange="renderBirthdaysAdmin()">
+              <option value="today">Today</option>
+              <option value="week">Next 7 days</option>
+              <option value="month">This month</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="actionBtn" onclick="sendBirthdaySmsSelected()">Send SMS to selected</button>
+          <button type="button" class="actionBtn secondary" onclick="sendBirthdaySmsAllVisible()">Send SMS to all listed</button>
+          <button type="button" class="actionBtn secondary" onclick="renderBirthdaysAdmin()">Refresh</button>
+        </div>
+        <div id="bdayMsg" style="font-size:13px;margin-top:10px;"></div>
+        <p id="bdayCount" style="font-weight:600;color:#1e4d2b;margin:12px 0 8px;"></p>
+        <div id="bdayListBody"></div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -898,6 +931,7 @@ function switchTab(name) {
   if (name === "events") renderEventsAdmin();
   if (name === "sms") updateSmsCharCount();
   if (name === "expenses") initExpensesTab();
+  if (name === "birthdays") renderBirthdaysAdmin();
 }
 
 async function login() {
@@ -2327,6 +2361,205 @@ function loadAnnouncementTicker() {
   ticker.style.display = "block";
   const duration = Math.max(16, Math.min(60, Math.round(text.length / 8)));
   track.style.animationDuration = duration + "s";
+}
+
+/* ---- Birthdays ---- */
+
+function parseDobParts(dob) {
+  if (!dob) return null;
+  const s = String(dob).trim();
+  // YYYY-MM-DD or YYYY/MM/DD
+  let m = s.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if (m) return { month: Number(m[2]), day: Number(m[3]) };
+  // DD-MM-YYYY or DD/MM/YYYY
+  m = s.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
+  if (m) return { month: Number(m[2]), day: Number(m[1]) };
+  return null;
+}
+
+function ageOnBirthdayThisYear(dob, refDate) {
+  const s = String(dob || "");
+  const y = s.match(/^(\d{4})/);
+  if (!y) return null;
+  const birthYear = Number(y[1]);
+  if (!birthYear) return null;
+  return refDate.getFullYear() - birthYear;
+}
+
+function birthdayMatchesRange(parts, range, ref) {
+  if (!parts || !parts.month || !parts.day) return false;
+  const y = ref.getFullYear();
+  const todayMd = (ref.getMonth() + 1) * 100 + ref.getDate();
+  const bMd = parts.month * 100 + parts.day;
+
+  if (range === "today") return bMd === todayMd;
+
+  if (range === "month") return parts.month === (ref.getMonth() + 1);
+
+  // next 7 days (including today)
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(y, ref.getMonth(), ref.getDate() + i);
+    if (parts.month === d.getMonth() + 1 && parts.day === d.getDate()) return true;
+  }
+  return false;
+}
+
+function membersWithBirthdays(range) {
+  const ref = new Date();
+  return (allMembers || [])
+    .filter(m => (m.status || "").toLowerCase() === "approved")
+    .map(m => {
+      const parts = parseDobParts(m.date_of_birth);
+      if (!parts || !birthdayMatchesRange(parts, range, ref)) return null;
+      return {
+        member: m,
+        parts,
+        age: ageOnBirthdayThisYear(m.date_of_birth, ref),
+        sortKey: parts.month * 100 + parts.day,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.sortKey - b.sortKey || String(a.member.full_name || "").localeCompare(String(b.member.full_name || "")));
+}
+
+function defaultBirthdayMessage(name, age) {
+  const n = name || "member";
+  const ageBit = age != null && age > 0 && age < 120 ? " on turning " + age : "";
+  return "Happy birthday, " + n + ageBit + "! Wishing you joy and long life. — Adagbor Descendant Association";
+}
+
+function renderBirthdaysAdmin() {
+  const body = document.getElementById("bdayListBody");
+  const countEl = document.getElementById("bdayCount");
+  const msg = document.getElementById("bdayMsg");
+  if (!body) return;
+  if (msg) msg.textContent = "";
+
+  const range = (document.getElementById("bdayRange") || {}).value || "today";
+  const list = membersWithBirthdays(range);
+
+  const rangeLabel = range === "today" ? "today"
+    : range === "week" ? "in the next 7 days"
+    : "this month";
+
+  if (countEl) {
+    countEl.textContent = list.length
+      ? list.length + " birthday(s) " + rangeLabel
+      : "No birthdays " + rangeLabel;
+  }
+
+  if (!list.length) {
+    body.innerHTML = '<p style="color:#888;font-size:14px;">No matching members. Ensure date of birth is filled on member profiles.</p>';
+    return;
+  }
+
+  body.innerHTML = list.map(item => {
+    const m = item.member;
+    const id = m.id != null ? String(m.id) : "";
+    const phone = m.phone || "";
+    const hasPhone = !!String(phone).trim();
+    return '<div style="border:1px solid #eee;border-radius:8px;padding:14px;margin-bottom:10px;background:#fafafa;">' +
+      '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<input type="checkbox" class="bday-check" data-id="' + escapeHtml(id) + '" data-phone="' + escapeHtml(phone) + '" data-name="' + escapeHtml(m.full_name || "") + '" data-age="' + (item.age != null ? item.age : "") + '"' + (hasPhone ? " checked" : " disabled") + '>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-weight:600;font-size:15px;color:#1e4d2b;">' + escapeHtml(m.full_name || "") + '</div>' +
+          '<div style="font-size:13px;color:#555;margin-top:4px;">' +
+            escapeHtml(m.date_of_birth || "") +
+            (item.age != null ? " · turns " + item.age : "") +
+            (m.branch ? " · " + escapeHtml(m.branch) : "") +
+            (hasPhone ? " · " + escapeHtml(phone) : " · <span style=\"color:#b00020;\">no phone</span>") +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="margin-top:10px;">' +
+        (hasPhone
+          ? '<button type="button" class="actionBtn secondary" onclick="sendOneBirthdaySms(this)" data-phone="' + escapeHtml(phone) + '" data-name="' + escapeHtml(m.full_name || "") + '" data-age="' + (item.age != null ? item.age : "") + '">Send birthday SMS</button>'
+          : '<span style="font-size:12px;color:#888;">Cannot SMS — no phone on file</span>') +
+      '</div>' +
+    '</div>';
+  }).join("");
+}
+
+async function sendBirthdaySmsPayload(phones, message) {
+  const res = await fetch(`${API_BASE}/api/admin/sms`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Admin-Key": adminKey,
+    },
+    body: JSON.stringify({ phones, message }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) {
+    throw new Error(data.error || data.detail || res.statusText || "SMS failed");
+  }
+  return data;
+}
+
+async function sendOneBirthdaySms(btn) {
+  const msg = document.getElementById("bdayMsg");
+  const phone = btn.getAttribute("data-phone");
+  const name = btn.getAttribute("data-name") || "";
+  const ageRaw = btn.getAttribute("data-age");
+  const age = ageRaw !== "" && ageRaw != null ? Number(ageRaw) : null;
+  if (!phone) return;
+  if (!confirm("Send birthday SMS to " + name + "?")) return;
+  btn.disabled = true;
+  if (msg) { msg.style.color = "#555"; msg.textContent = "Sending…"; }
+  try {
+    await sendBirthdaySmsPayload([phone], defaultBirthdayMessage(name, age));
+    if (msg) { msg.style.color = "#155724"; msg.textContent = "Birthday SMS sent to " + name + "."; }
+  } catch (err) {
+    if (msg) { msg.style.color = "#b00020"; msg.textContent = "Failed: " + (err.message || String(err)); }
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function collectBirthdayTargets(onlyChecked) {
+  const boxes = [...document.querySelectorAll(".bday-check")];
+  return boxes
+    .filter(b => !b.disabled && (!onlyChecked || b.checked))
+    .map(b => ({
+      phone: b.getAttribute("data-phone"),
+      name: b.getAttribute("data-name") || "",
+      age: b.getAttribute("data-age") !== "" ? Number(b.getAttribute("data-age")) : null,
+    }))
+    .filter(t => t.phone);
+}
+
+async function sendBirthdaySmsSelected() {
+  await sendBirthdaySmsBatch(true);
+}
+
+async function sendBirthdaySmsAllVisible() {
+  await sendBirthdaySmsBatch(false);
+}
+
+async function sendBirthdaySmsBatch(onlyChecked) {
+  const msg = document.getElementById("bdayMsg");
+  const targets = collectBirthdayTargets(onlyChecked);
+  if (!targets.length) {
+    if (msg) { msg.style.color = "#b00020"; msg.textContent = "No members with phone selected."; }
+    return;
+  }
+  if (!confirm("Send birthday SMS to " + targets.length + " member(s)?")) return;
+  if (msg) { msg.style.color = "#555"; msg.textContent = "Sending " + targets.length + " message(s)…"; }
+
+  let ok = 0, fail = 0;
+  // Personalised messages one-by-one (names differ)
+  for (const t of targets) {
+    try {
+      await sendBirthdaySmsPayload([t.phone], defaultBirthdayMessage(t.name, t.age));
+      ok++;
+    } catch (e) {
+      fail++;
+    }
+  }
+  if (msg) {
+    msg.style.color = fail ? "#b00020" : "#155724";
+    msg.textContent = "Sent: " + ok + (fail ? " · Failed: " + fail : "");
+  }
 }
 
 /* ---- Expenses ---- */
