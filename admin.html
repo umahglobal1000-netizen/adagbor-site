@@ -175,6 +175,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h2.5l6 3.5v-11l-6 3.5z"/><path d="M15 8.5c1.3.8 2 2 2 3.5s-.7 2.7-2 3.5"/><path d="M9 17v2.5c0 .8-.7 1.5-1.5 1.5S6 20.3 6 19.5V17"/></svg>
         <span>Announcements</span>
       </button>
+      <button type="button" class="tab" data-tab="gallery" onclick="switchTab('gallery')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="14" height="12" rx="2"/><path d="M9 8l4 2.5-4 2.5z" fill="currentColor" stroke="none"/><path d="M17 9l4-2.3v10.6l-4-2.3"/></svg>
+        <span>Gallery</span>
+      </button>
       <button type="button" class="tab" data-tab="executives" onclick="switchTab('executives')">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 8h17"/><circle cx="8" cy="13.6" r="1.7"/><path d="M6 17c.3-1.6 1.6-2.6 2-2.6s1.7 1 2 2.6"/><path d="M13 12h5M13 15h5"/></svg>
         <span>Executive contacts</span>
@@ -429,6 +433,60 @@
       </div>
     </div>
 
+    <!-- Gallery -->
+    <div id="tab-gallery" class="tab-panel">
+      <div class="panel">
+        <h2>Add / edit gallery item</h2>
+        <p class="hint">Shows on the public page's Gallery/Highlights section — a video clip with a title and short text.</p>
+        <input type="hidden" id="galId">
+        <div class="form-row">
+          <div>
+            <label>Title</label>
+            <input type="text" id="galTitle" placeholder="e.g. Annual meeting highlights">
+          </div>
+          <div>
+            <label>Active</label>
+            <select id="galActive"><option value="yes">Yes — publish</option><option value="no">No — draft</option></select>
+          </div>
+        </div>
+        <div class="form-row" style="grid-template-columns:1fr;">
+          <div>
+            <label>Text</label>
+            <textarea id="galText" rows="3" style="width:100%;padding:10px;border:1px solid #ccc;border-radius:6px;font-family:inherit;font-size:14px;" placeholder="Short description..."></textarea>
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label>Video source</label>
+            <select id="galVideoMode" onchange="onGalVideoModeChange()">
+              <option value="link">Paste a link (YouTube/Facebook)</option>
+              <option value="upload">Upload a video file</option>
+            </select>
+          </div>
+          <div id="galLinkWrap">
+            <label>Video link</label>
+            <input type="text" id="galVideoLink" placeholder="https://youtube.com/watch?v=... or a Facebook video link">
+          </div>
+          <div id="galUploadWrap" style="display:none;">
+            <label>Video file</label>
+            <input type="file" id="galVideoFile" accept="video/*" onchange="onGalVideoFileChange(event)">
+          </div>
+        </div>
+        <div id="galUploadStatus" style="font-size:13px;margin-top:4px;color:#5a4a1f;"></div>
+        <div class="form-actions">
+          <button type="button" class="actionBtn" onclick="saveGalleryItem()">Save gallery item</button>
+          <button type="button" class="actionBtn secondary" onclick="clearGalleryForm()">Clear</button>
+        </div>
+        <div id="galMsg" style="font-size:13px;margin-top:8px;color:#155724;"></div>
+      </div>
+      <div class="tableScroll">
+        <table>
+          <thead><tr><th>Status</th><th>Title</th><th>Video</th><th>Created</th><th></th></tr></thead>
+          <tbody id="galListBody"></tbody>
+        </table>
+      </div>
+    </div>
+
     <!-- Executive contacts -->
     <div id="tab-executives" class="tab-panel">
       <div class="panel">
@@ -624,6 +682,7 @@ function switchTab(name) {
   if (name === "attendance") initAttendanceTab();
   if (name === "resolutions") renderResolutionsAdmin();
   if (name === "announcements") renderAnnouncementsAdmin();
+  if (name === "gallery") renderGalleryAdmin();
 }
 
 async function login() {
@@ -1532,6 +1591,143 @@ function renderAnnouncementsAdmin() {
     <td>
       <button type="button" class="actionBtn secondary" onclick="editAnnouncement('${escapeHtml(a.id)}')">Edit</button>
       <button type="button" class="actionBtn danger" onclick="deleteAnnouncement('${escapeHtml(a.id)}')">Delete</button>
+    </td></tr>`).join("");
+}
+
+
+/* ---- Gallery ---- */
+const GAL_KEY = "adagbor_gallery";
+const CLOUDINARY_CLOUD_NAME = "kccw9z3b";
+const CLOUDINARY_UPLOAD_PRESET = "adagbor_videos";
+
+function getGalleryItems() {
+  try { const r = localStorage.getItem(GAL_KEY); const a = r ? JSON.parse(r) : []; return Array.isArray(a) ? a : []; }
+  catch (e) { return []; }
+}
+function setGalleryItems(list) {
+  localStorage.setItem(GAL_KEY, JSON.stringify(list));
+  if (window.AdagborStore) AdagborStore.save("gallery", list, adminKey);
+}
+
+let galPendingVideoUrl = "";
+
+function onGalVideoModeChange() {
+  const mode = document.getElementById("galVideoMode").value;
+  document.getElementById("galLinkWrap").style.display = mode === "link" ? "block" : "none";
+  document.getElementById("galUploadWrap").style.display = mode === "upload" ? "block" : "none";
+}
+
+async function onGalVideoFileChange(event) {
+  const file = event.target.files && event.target.files[0];
+  const status = document.getElementById("galUploadStatus");
+  galPendingVideoUrl = "";
+  if (!file) return;
+  status.style.color = "#5a4a1f";
+  status.textContent = "Uploading video… please keep this open.";
+  try {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/video/upload`, {
+      method: "POST",
+      body: form
+    });
+    const data = await res.json();
+    if (!res.ok || !data.secure_url) throw new Error((data.error && data.error.message) || "Upload failed.");
+    galPendingVideoUrl = data.secure_url;
+    status.style.color = "#155724";
+    status.textContent = "Video uploaded — ready to save.";
+  } catch (err) {
+    status.style.color = "#b00020";
+    status.textContent = "Could not upload video: " + (err.message || "unknown error");
+  }
+}
+
+function clearGalleryForm() {
+  document.getElementById("galId").value = "";
+  document.getElementById("galTitle").value = "";
+  document.getElementById("galText").value = "";
+  document.getElementById("galActive").value = "yes";
+  document.getElementById("galVideoMode").value = "link";
+  document.getElementById("galVideoLink").value = "";
+  document.getElementById("galVideoFile").value = "";
+  document.getElementById("galUploadStatus").textContent = "";
+  document.getElementById("galMsg").textContent = "";
+  galPendingVideoUrl = "";
+  onGalVideoModeChange();
+}
+
+function saveGalleryItem() {
+  const title = document.getElementById("galTitle").value.trim();
+  const text = document.getElementById("galText").value.trim();
+  const active = document.getElementById("galActive").value === "yes";
+  const mode = document.getElementById("galVideoMode").value;
+  const msg = document.getElementById("galMsg");
+
+  let videoUrl = "";
+  if (mode === "link") {
+    videoUrl = document.getElementById("galVideoLink").value.trim();
+  } else {
+    videoUrl = galPendingVideoUrl;
+  }
+
+  if (!title) { msg.style.color = "#b00020"; msg.textContent = "Title is required."; return; }
+  if (!videoUrl) {
+    msg.style.color = "#b00020";
+    msg.textContent = mode === "link" ? "Paste a video link." : "Upload a video file first (wait for \"ready to save\").";
+    return;
+  }
+
+  const id = document.getElementById("galId").value || ("g_" + Date.now());
+  let list = getGalleryItems();
+  const entry = { id, title, text, active, videoUrl, createdAt: new Date().toISOString() };
+  const i = list.findIndex(x => x.id === id);
+  if (i >= 0) { entry.createdAt = list[i].createdAt || entry.createdAt; list[i] = entry; }
+  else list.push(entry);
+  setGalleryItems(list);
+  clearGalleryForm();
+  renderGalleryAdmin();
+  msg.style.color = "#155724";
+  msg.textContent = "Saved.";
+}
+
+function editGalleryItem(id) {
+  const g = getGalleryItems().find(x => x.id === id);
+  if (!g) return;
+  document.getElementById("galId").value = g.id;
+  document.getElementById("galTitle").value = g.title || "";
+  document.getElementById("galText").value = g.text || "";
+  document.getElementById("galActive").value = g.active ? "yes" : "no";
+  document.getElementById("galVideoMode").value = "link";
+  document.getElementById("galVideoLink").value = g.videoUrl || "";
+  document.getElementById("galVideoFile").value = "";
+  document.getElementById("galUploadStatus").textContent = "";
+  galPendingVideoUrl = "";
+  onGalVideoModeChange();
+  switchTab("gallery");
+}
+
+function deleteGalleryItem(id) {
+  if (!confirm("Delete this gallery item?")) return;
+  setGalleryItems(getGalleryItems().filter(x => x.id !== id));
+  renderGalleryAdmin();
+}
+
+function renderGalleryAdmin() {
+  const body = document.getElementById("galListBody");
+  const list = getGalleryItems().slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="5" style="color:#888;">No gallery items yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(g => `<tr>
+    <td>${g.active ? "Published" : "Draft"}</td>
+    <td>${escapeHtml(g.title || "")}</td>
+    <td><a href="${escapeHtml(g.videoUrl || "")}" target="_blank" rel="noopener">View</a></td>
+    <td>${escapeHtml((g.createdAt || "").slice(0, 10))}</td>
+    <td>
+      <button type="button" class="actionBtn secondary" onclick="editGalleryItem('${escapeHtml(g.id)}')">Edit</button>
+      <button type="button" class="actionBtn danger" onclick="deleteGalleryItem('${escapeHtml(g.id)}')">Delete</button>
     </td></tr>`).join("");
 }
 
