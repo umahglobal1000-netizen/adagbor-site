@@ -59,10 +59,67 @@
   .exec-card .line{font-size:14px;margin:6px 0;}
   .exec-card a{color:var(--green);text-decoration:none;}
   #emptyExec{display:none;padding:20px;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-soft);font-size:14px;}
-  .gal-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:14px;}
+  .gal-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:14px;min-width:0;}
   .gal-card .gal-media{width:100%;aspect-ratio:16/9;border:0;border-radius:4px;background:#0e1a12;display:block;}
   .gal-card h3{font-size:16px;margin:12px 0 4px;}
   .gal-card p{margin:0;font-size:13.5px;color:var(--ink-soft);}
+
+  /* Horizontal announcements strip (top of page) */
+  .ann-strip{
+    background:var(--paper-dim);
+    border-bottom:1px solid var(--rule);
+    padding:16px 0 18px;
+  }
+  .ann-strip .ann-head{
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    margin-bottom:12px;
+  }
+  .ann-strip .ann-head .hero-entry{margin-bottom:0;}
+  .ann-scroll{
+    display:flex;
+    gap:14px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding:2px 0 8px;
+    scrollbar-width:thin;
+  }
+  .ann-scroll::-webkit-scrollbar{height:6px;}
+  .ann-scroll::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px;}
+  .ann-card{
+    flex:0 0 min(300px, 82vw);
+    scroll-snap-align:start;
+    background:#fff;
+    border:1px solid var(--rule);
+    border-radius:6px;
+    padding:16px 18px;
+  }
+  .ann-card .meta{font-size:12px;color:var(--brass);margin-bottom:8px;}
+  .ann-card h3{font-size:16px;margin:0 0 6px;}
+  .ann-card p{
+    margin:0;font-size:13.5px;color:var(--ink-soft);
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  #publicAnnEmpty{padding:4px 0;color:var(--ink-soft);font-size:14px;}
+
+  /* Gallery near top: horizontal scroll of video cards */
+  .gal-top{padding:28px 0 32px;border-bottom:1px solid var(--rule);}
+  .gal-scroll{
+    display:flex;
+    gap:16px;
+    overflow-x:auto;
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding:2px 0 10px;
+    scrollbar-width:thin;
+  }
+  .gal-scroll::-webkit-scrollbar{height:6px;}
+  .gal-scroll::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px;}
+  .gal-scroll .gal-card{
+    flex:0 0 min(320px, 88vw);
+    scroll-snap-align:start;
+  }
+
   footer{padding:28px 0;font-size:13px;color:var(--ink-soft);}
   @media (max-width:720px){
     .nav-toggle{display:block;}
@@ -96,12 +153,25 @@
   </div>
 </header>
 
-
-<section class="section" id="announcements" style="padding-top:28px;padding-bottom:28px;background:var(--paper-dim);">
+<!-- Announcements: horizontal strip at the very top -->
+<section class="ann-strip" id="announcements">
   <div class="wrap">
-    <div class="hero-entry"><span class="dot"></span> Announcements</div>
-    <div id="publicAnnEmpty" style="color:var(--ink-soft);font-size:14px;">No announcements at this time.</div>
-    <div id="publicAnnList" class="card-grid"></div>
+    <div class="ann-head">
+      <div class="hero-entry"><span class="dot"></span> Announcements</div>
+    </div>
+    <div id="publicAnnEmpty">No announcements at this time.</div>
+    <div id="publicAnnList" class="ann-scroll"></div>
+  </div>
+</section>
+
+<!-- Gallery: moved near the top -->
+<section class="gal-top" id="gallery">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Highlights</div>
+    <h2 style="margin-bottom:6px;">Gallery</h2>
+    <p class="sub" style="margin-bottom:16px;">Video moments from our gatherings and family life.</p>
+    <div id="galEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No gallery items yet.</div>
+    <div class="gal-scroll" id="galGrid"></div>
   </div>
 </section>
 
@@ -160,17 +230,6 @@
       <div class="card"><div class="meta">BRANCH · TBA</div><h3>Branch meetings</h3><p>Local sittings ahead of the general assembly.</p></div>
       <div class="card"><div class="meta">ONGOING</div><h3>Membership drive</h3><p>Entry to the 2027 register remains open for descendants of every branch.</p></div>
     </div>
-  </div>
-</section>
-
-<!-- GALLERY -->
-<section class="section" id="gallery">
-  <div class="wrap">
-    <div class="hero-entry"><span class="dot"></span> Highlights</div>
-    <h2>Gallery</h2>
-    <p class="sub">Video moments from our gatherings and family life.</p>
-    <div id="galEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No gallery items yet.</div>
-    <div class="card-grid" id="galGrid"></div>
   </div>
 </section>
 
@@ -264,9 +323,9 @@
     empty.style.display = 'none';
     list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
     grid.innerHTML = list.map(a =>
-      '<div class="card"><div class="meta">' + escapeHtml((a.createdAt || '').slice(0, 10)) + '</div>' +
+      '<article class="ann-card"><div class="meta">' + escapeHtml((a.createdAt || '').slice(0, 10)) + '</div>' +
       '<h3>' + escapeHtml(a.title || '') + '</h3>' +
-      '<p>' + escapeHtml(a.body || '') + '</p></div>'
+      '<p>' + escapeHtml(a.body || '') + '</p></article>'
     ).join('');
   }
   loadPublicAnnouncements();
