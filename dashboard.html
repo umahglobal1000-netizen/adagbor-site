@@ -337,6 +337,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h2.5l6 3.5v-11l-6 3.5z"/><path d="M15 8.5c1.3.8 2 2 2 3.5s-.7 2.7-2 3.5"/><path d="M9 17v2.5c0 .8-.7 1.5-1.5 1.5S6 20.3 6 19.5V17"/></svg>
         <span>Announcements</span>
       </button>
+      <button type="button" class="tab" data-tab="expenses" onclick="switchTab('expenses')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v12H4z"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M9 12h6M9 15h4"/></svg>
+        <span>Expenses</span>
+      </button>
     </div>
 
     <div id="tab-profile" class="tab-panel active">
@@ -419,6 +423,23 @@
         <div class="dir-toolbar"><span id="annCount">Announcements</span></div>
         <div id="annMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
         <div id="annList"></div>
+      </div>
+    </div>
+    <div id="tab-expenses" class="tab-panel">
+      <div class="card">
+        <div class="dir-toolbar" style="flex-direction:column;align-items:stretch;gap:10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+            <span id="expCount">Association expenses</span>
+          </div>
+          <label style="font-size:0.8rem;color:#7a6f4f;display:flex;flex-direction:column;gap:4px;max-width:200px;">
+            Filter by month
+            <input type="month" id="memberExpMonth" onchange="loadMemberExpenses()" style="padding:6px 8px;border:1px solid #c9bd93;border-radius:4px;font-family:inherit;font-size:0.9rem;">
+          </label>
+          <p id="memberExpTotal" style="margin:0;font-weight:bold;color:#4a3f22;"></p>
+        </div>
+        <div id="expMsg" style="display:none;text-align:center;color:#7a6f4f;"></div>
+        <div id="expList"></div>
+        <p class="readonly-note">Read-only · recorded by the committee</p>
       </div>
     </div>
   </div>
@@ -530,6 +551,7 @@ function switchTab(name) {
   if (name === 'attendance') loadMyAttendance();
   if (name === 'resolutions') loadResolutions();
   if (name === 'announcements') loadAnnouncements();
+  if (name === 'expenses') loadMemberExpenses();
 }
 
 async function loadMe() {
@@ -936,13 +958,14 @@ function renderMemberPayments() {
 
     totalsBox.style.display = "block";
     totalsBox.innerHTML =
-      '<div style="font-size:0.9rem;color:#4a3f22;margin-bottom:12px;font-weight:bold;">Your total payment by item' +
+      '<div style="font-size:0.9rem;color:#4a3f22;margin-bottom:12px;font-weight:bold;">Your totals by contribution' +
       (periodLabel ? ' <span style="font-weight:normal;color:#7a6f4f;">(' + escapeHtml(periodLabel) + ')</span>' : '') +
       '</div>' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px;">' +
       names.map(name =>
         '<div style="background:#f5f0e1;border:1px solid #d8cfae;border-radius:6px;padding:12px 14px;">' +
-        '<div style="font-size:0.75rem;color:#7a6f4f;">' + escapeHtml(name) + '</div>' +
+        '<div style="font-size:0.75rem;color:#7a6f4f;">Total ' + escapeHtml(name) +
+        (periodLabel ? ' for ' + escapeHtml(periodLabel) : '') + '</div>' +
         '<div style="font-size:1.2rem;font-weight:bold;color:#4a3f22;margin-top:6px;">' +
         (byType[name].total || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
         '</div>' +
@@ -950,9 +973,10 @@ function renderMemberPayments() {
         '</div>'
       ).join("") +
       '</div>' +
-      '<div style="font-size:1rem;color:#5a4a1f;font-weight:bold;padding:8px 0 4px;border-top:1px solid #eee6d0;">Combined total: ' +
+      '<div style="font-size:1rem;color:#5a4a1f;font-weight:bold;padding:8px 0 4px;border-top:1px solid #eee6d0;">Combined total (dues)' +
+      (periodLabel ? ' for ' + escapeHtml(periodLabel) : '') + ': ' +
       grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>' +
-      '<p style="font-size:0.75rem;color:#9a8f6f;margin:6px 0 0;">Use Period (day / month / year) to search totals for that time. Combined total covers dues only — voluntary donations are shown separately.</p>';
+      '<p style="font-size:0.75rem;color:#9a8f6f;margin:6px 0 0;">Choose Period: By month / By year to see totals for that month or year. Combined total is dues only — voluntary donations appear as their own card.</p>';
   }
 
   // --- Detail list (also apply contribution type filter) ---
@@ -1088,6 +1112,56 @@ async function loadResolutions() {
     '<div class="res-item"><h3>' + escapeHtml(r.title || '') + '</h3>' +
     '<div class="meta">' + escapeHtml(r.date || '') + '</div>' +
     '<div class="body">' + escapeHtml(r.body || '') + '</div></div>'
+  ).join('');
+}
+
+async function loadMemberExpenses() {
+  const countEl = document.getElementById('expCount');
+  const msg = document.getElementById('expMsg');
+  const listEl = document.getElementById('expList');
+  const totalEl = document.getElementById('memberExpTotal');
+  if (!countEl || !listEl) return;
+  msg.style.display = 'none';
+  listEl.innerHTML = '';
+  if (totalEl) totalEl.textContent = '';
+
+  let list = [];
+  if (window.AdagborStore) {
+    const v = await AdagborStore.load('expenses', []);
+    if (Array.isArray(v)) list = v;
+  } else {
+    try {
+      const raw = localStorage.getItem('adagbor_expenses');
+      if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) list = p; }
+    } catch (e) {}
+  }
+
+  const month = (document.getElementById('memberExpMonth') || {}).value || '';
+  if (month) list = list.filter(e => String(e.date || '').slice(0, 7) === month);
+  list = list.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+
+  const total = list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  countEl.textContent = list.length + ' expense(s)';
+  if (totalEl) {
+    totalEl.textContent = 'Total' + (month ? ' for ' + month : '') + ': ₦' +
+      total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+
+  if (!list.length) {
+    msg.style.display = 'block';
+    msg.textContent = month ? 'No expenses for this month.' : 'No expenses published yet.';
+    return;
+  }
+
+  listEl.innerHTML = list.map(e =>
+    '<div class="pay-row"><div><div class="type">' + escapeHtml(e.title || e.category || 'Expense') +
+    '</div><div class="meta">' + escapeHtml(e.date || '') +
+    (e.category ? ' · ' + escapeHtml(e.category) : '') +
+    (e.paidTo ? ' · To: ' + escapeHtml(e.paidTo) : '') +
+    (e.note ? ' · ' + escapeHtml(e.note) : '') +
+    '</div></div><div class="amt">' +
+    Number(e.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) +
+    '</div></div>'
   ).join('');
 }
 

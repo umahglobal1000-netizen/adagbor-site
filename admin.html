@@ -93,10 +93,17 @@
   #printArea { display: none; }
   @media print {
     body * { visibility: hidden; }
-    #printArea, #printArea * { visibility: visible; }
-    #printArea { display: block !important; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; font-family: Georgia, serif; color: #000; }
-    #printArea table { width: 100%; border-collapse: collapse; font-size: 11px; }
-    #printArea th, #printArea td { border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal; }
+    #printArea, #printArea *,
+    #printExpensesArea, #printExpensesArea * { visibility: visible; }
+    #printArea, #printExpensesArea {
+      display: block !important; position: absolute; left: 0; top: 0; width: 100%;
+      padding: 24px; font-family: Georgia, serif; color: #000;
+    }
+    #printArea table, #printExpensesArea table { width: 100%; border-collapse: collapse; font-size: 11px; }
+    #printArea th, #printArea td,
+    #printExpensesArea th, #printExpensesArea td {
+      border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal;
+    }
   }
   @media (max-width: 640px) {
     .form-row, .form-row.three { grid-template-columns: 1fr; }
@@ -186,6 +193,10 @@
       <button type="button" class="tab" data-tab="sms" onclick="switchTab('sms')">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16v9.5a1.5 1.5 0 0 1-1.5 1.5H9l-4 3v-3H5.5A1.5 1.5 0 0 1 4 16z"/><path d="M8 10.5h8M8 13.5h5"/></svg>
         <span>SMS</span>
+      </button>
+      <button type="button" class="tab" data-tab="expenses" onclick="switchTab('expenses')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16v12H4z"/><path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7"/><path d="M9 12h6M9 15h4"/></svg>
+        <span>Expenses</span>
       </button>
     </div>
 
@@ -296,6 +307,29 @@
         </div>
         <div id="contribMsg"></div>
         <p id="payDayTotal" style="margin-top:14px;font-weight:600;color:#1e4d2b;"></p>
+      </div>
+
+      <div class="panel">
+        <h2>Totals by contribution</h2>
+        <p class="hint">See total monthly dues, registration fees, donations and other items for a chosen month or year.</p>
+        <div class="form-row three">
+          <div>
+            <label for="totMode">Period type</label>
+            <select id="totMode" onchange="onTotalsModeChange()">
+              <option value="month">By month</option>
+              <option value="year">By year</option>
+              <option value="day">By day</option>
+              <option value="all">All time</option>
+            </select>
+          </div>
+          <div id="totValueWrap">
+            <label for="totValue" id="totValueLabel">Month</label>
+            <input type="month" id="totValue" onchange="renderContributionTotals()">
+          </div>
+        </div>
+        <div id="contribTotalsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-top:12px;"></div>
+        <p id="contribTotalsGrand" style="margin-top:14px;font-size:16px;font-weight:700;color:#1e4d2b;"></p>
+        <p style="margin:6px 0 0;font-size:12px;color:#888;">Donations are shown as their own total. Combined total includes all types for the selected period.</p>
       </div>
 
       <div class="panel">
@@ -598,6 +632,83 @@
         <div id="smsMsg" style="font-size:13px;margin-top:10px;"></div>
       </div>
     </div>
+
+    <!-- Expenses -->
+    <div id="tab-expenses" class="tab-panel">
+      <div class="panel">
+        <h2>Record / edit expense</h2>
+        <p class="hint">Association spending. Members can view these on their dashboard (read-only).</p>
+        <input type="hidden" id="expId">
+        <div class="form-row three">
+          <div>
+            <label for="expDate">Date</label>
+            <input type="date" id="expDate">
+          </div>
+          <div>
+            <label for="expCategory">Category</label>
+            <select id="expCategory">
+              <option value="Meeting">Meeting</option>
+              <option value="Welfare">Welfare</option>
+              <option value="Transport">Transport</option>
+              <option value="Venue">Venue</option>
+              <option value="Printing">Printing</option>
+              <option value="Communication">Communication</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label for="expAmount">Amount (₦)</label>
+            <input type="number" id="expAmount" min="0" step="0.01" placeholder="0.00">
+          </div>
+        </div>
+        <div class="form-row">
+          <div>
+            <label for="expTitle">Title / description</label>
+            <input type="text" id="expTitle" placeholder="e.g. Hall hire for general meeting">
+          </div>
+          <div>
+            <label for="expPaidTo">Paid to (optional)</label>
+            <input type="text" id="expPaidTo" placeholder="Vendor or person">
+          </div>
+        </div>
+        <div class="form-row">
+          <div style="grid-column:1 / -1;">
+            <label for="expNote">Note (optional)</label>
+            <input type="text" id="expNote" placeholder="Extra detail">
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="actionBtn" onclick="saveExpense()">Save expense</button>
+          <button type="button" class="actionBtn secondary" onclick="clearExpenseForm()">Clear form</button>
+          <button type="button" class="actionBtn secondary" onclick="printExpenses()">Print list</button>
+        </div>
+        <div id="expMsg" style="font-size:13px;margin-top:10px;color:#155724;"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Expense records</h2>
+        <div class="toolbar">
+          <span id="expCount">0 record(s)</span>
+          <div class="toolbar-right">
+            <label style="font-size:13px;color:#555;">Filter month
+              <input type="month" id="expFilterMonth" onchange="renderExpensesAdmin()">
+            </label>
+            <button type="button" class="actionBtn secondary" onclick="document.getElementById('expFilterMonth').value='';renderExpensesAdmin();">All months</button>
+          </div>
+        </div>
+        <p id="expFilterTotal" style="font-weight:600;color:#1e4d2b;margin:0 0 10px;"></p>
+        <div class="tableScroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th><th>Category</th><th>Title</th><th>Paid to</th><th>Amount</th><th>Note</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="expListBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -610,6 +721,18 @@
     </thead>
     <tbody id="printBody"></tbody>
   </table>
+</div>
+
+<div id="printExpensesArea" aria-hidden="true" style="display:none;">
+  <h1>Adagbor Descendant Association — Expenses</h1>
+  <div class="meta" id="printExpMeta"></div>
+  <table>
+    <thead>
+      <tr><th>Date</th><th>Category</th><th>Title</th><th>Paid to</th><th>Amount (₦)</th><th>Note</th></tr>
+    </thead>
+    <tbody id="printExpBody"></tbody>
+  </table>
+  <p id="printExpTotal" style="margin-top:12px;font-weight:700;"></p>
 </div>
 
 <div class="modal-overlay" id="memberEditOverlay">
@@ -729,6 +852,7 @@ function switchTab(name) {
   if (name === "announcements") renderAnnouncementsAdmin();
   if (name === "gallery") renderGalleryAdmin();
   if (name === "sms") updateSmsCharCount();
+  if (name === "expenses") initExpensesTab();
 }
 
 async function login() {
@@ -1267,6 +1391,7 @@ function saveContributionPayment() {
   document.getElementById("payPurpose").value = "";
   msg.textContent = `Saved ${type.name} of ${amount.toLocaleString()} for ${m.full_name}.`;
   renderPayDayTotal();
+  renderContributionTotals();
 }
 
 function renderPayDayTotal() {
@@ -1320,6 +1445,7 @@ function deletePayment(id) {
   setPayments(getPayments().filter(p => p.id !== id));
   renderPayHistory();
   renderPayDayTotal();
+  renderContributionTotals();
   setContribMsg("Payment deleted.");
 }
 
@@ -1333,6 +1459,111 @@ function initContributionsTab() {
   onPayTypeChange();
   renderPayHistory();
   renderPayDayTotal();
+  const totVal = document.getElementById("totValue");
+  if (totVal && !totVal.value) totVal.value = month;
+  onTotalsModeChange();
+}
+
+function onTotalsModeChange() {
+  const mode = (document.getElementById("totMode") || {}).value || "month";
+  const wrap = document.getElementById("totValueWrap");
+  const input = document.getElementById("totValue");
+  const label = document.getElementById("totValueLabel");
+  if (!wrap || !input) return;
+  if (mode === "all") {
+    wrap.style.display = "none";
+    renderContributionTotals();
+    return;
+  }
+  wrap.style.display = "block";
+  if (mode === "day") {
+    label.textContent = "Day";
+    input.type = "date";
+    if (!input.value || input.value.length !== 10) input.value = new Date().toISOString().slice(0, 10);
+  } else if (mode === "month") {
+    label.textContent = "Month";
+    input.type = "month";
+    if (!input.value || input.value.length !== 7) input.value = new Date().toISOString().slice(0, 7);
+  } else if (mode === "year") {
+    label.textContent = "Year";
+    input.type = "number";
+    input.min = "2000";
+    input.max = "2100";
+    input.placeholder = "YYYY";
+    if (!input.value || String(input.value).length !== 4) input.value = String(new Date().getFullYear());
+  }
+  renderContributionTotals();
+}
+
+function paymentInTotalsPeriod(p, mode, value) {
+  if (!mode || mode === "all" || !value) return true;
+  const date = String(p.date || "");
+  const period = String(p.period || "");
+  if (mode === "day") return date === value || date.slice(0, 10) === value;
+  if (mode === "month") return date.slice(0, 7) === value || period === value || period.slice(0, 7) === value;
+  if (mode === "year") return date.slice(0, 4) === value || period.slice(0, 4) === value;
+  return true;
+}
+
+function contributionTypeLabel(p) {
+  if (!p) return "Other";
+  if (p.kind === "donation" || p.typeId === "donation") return "Voluntary donations";
+  if (p.typeId === "monthly" || p.kind === "monthly") return "Monthly fee";
+  if (p.typeId === "registration") return "Registration fee";
+  return p.typeName || p.typeId || "Other";
+}
+
+function renderContributionTotals() {
+  const grid = document.getElementById("contribTotalsGrid");
+  const grandEl = document.getElementById("contribTotalsGrand");
+  if (!grid) return;
+
+  const mode = (document.getElementById("totMode") || {}).value || "month";
+  const value = (document.getElementById("totValue") || {}).value || "";
+  const all = getPayments().filter(p => paymentInTotalsPeriod(p, mode, value));
+
+  const byType = {};
+  all.forEach(p => {
+    const label = contributionTypeLabel(p);
+    if (!byType[label]) byType[label] = { total: 0, count: 0 };
+    byType[label].total += Number(p.amount) || 0;
+    byType[label].count += 1;
+  });
+
+  // Preferred order for common types
+  const preferred = ["Monthly fee", "Registration fee", "Voluntary donations"];
+  const names = Object.keys(byType).sort((a, b) => {
+    const ia = preferred.indexOf(a);
+    const ib = preferred.indexOf(b);
+    if (ia >= 0 || ib >= 0) return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    return a.localeCompare(b);
+  });
+
+  const periodText = mode === "all" ? "all time"
+    : mode === "day" ? "day " + value
+    : mode === "month" ? "month " + value
+    : mode === "year" ? "year " + value : value;
+
+  if (!names.length) {
+    grid.innerHTML = '<div style="color:#888;font-size:13px;">No payments for this period.</div>';
+    if (grandEl) grandEl.textContent = "Combined total (" + periodText + "): ₦0";
+    return;
+  }
+
+  grid.innerHTML = names.map(name => {
+    const rec = byType[name];
+    return '<div class="total-card">' +
+      '<div class="label">Total ' + escapeHtml(name) + '</div>' +
+      '<div class="value">₦' + (rec.total || 0).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + '</div>' +
+      '<div class="sub">' + (rec.count || 0) + ' payment(s) · ' + escapeHtml(periodText) + '</div>' +
+      '</div>';
+  }).join("");
+
+  const grand = names.reduce((s, n) => s + (byType[n].total || 0), 0);
+  if (grandEl) {
+    grandEl.textContent = "Combined total (" + periodText + "): ₦" +
+      grand.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
 }
 
 
@@ -1891,6 +2122,185 @@ function loadAnnouncementTicker() {
   ticker.style.display = "block";
   const duration = Math.max(16, Math.min(60, Math.round(text.length / 8)));
   track.style.animationDuration = duration + "s";
+}
+
+/* ---- Expenses ---- */
+const EXP_KEY = "adagbor_expenses";
+
+function getExpenses() {
+  try {
+    const r = localStorage.getItem(EXP_KEY);
+    const a = r ? JSON.parse(r) : [];
+    return Array.isArray(a) ? a : [];
+  } catch (e) { return []; }
+}
+
+function setExpenses(list) {
+  localStorage.setItem(EXP_KEY, JSON.stringify(list));
+  if (window.AdagborStore) AdagborStore.save("expenses", list, adminKey);
+}
+
+function clearExpenseForm() {
+  document.getElementById("expId").value = "";
+  document.getElementById("expDate").value = new Date().toISOString().slice(0, 10);
+  document.getElementById("expCategory").value = "Meeting";
+  document.getElementById("expAmount").value = "";
+  document.getElementById("expTitle").value = "";
+  document.getElementById("expPaidTo").value = "";
+  document.getElementById("expNote").value = "";
+  const msg = document.getElementById("expMsg");
+  if (msg) { msg.textContent = ""; msg.style.color = "#155724"; }
+}
+
+function saveExpense() {
+  const msg = document.getElementById("expMsg");
+  const date = document.getElementById("expDate").value;
+  const category = document.getElementById("expCategory").value;
+  const title = (document.getElementById("expTitle").value || "").trim();
+  const amount = Number(document.getElementById("expAmount").value);
+  const paidTo = (document.getElementById("expPaidTo").value || "").trim();
+  const note = (document.getElementById("expNote").value || "").trim();
+
+  if (!date || !title) {
+    msg.style.color = "#b00020";
+    msg.textContent = "Date and title are required.";
+    return;
+  }
+  if (!(amount > 0)) {
+    msg.style.color = "#b00020";
+    msg.textContent = "Enter a valid amount greater than zero.";
+    return;
+  }
+
+  const id = document.getElementById("expId").value || ("e_" + Date.now());
+  let list = getExpenses();
+  const entry = {
+    id, date, category, title, amount, paidTo, note,
+    updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+  const i = list.findIndex(x => x.id === id);
+  if (i >= 0) {
+    entry.createdAt = list[i].createdAt || entry.createdAt;
+    list[i] = entry;
+  } else {
+    list.push(entry);
+  }
+  setExpenses(list);
+  clearExpenseForm();
+  renderExpensesAdmin();
+  msg.style.color = "#155724";
+  msg.textContent = "Expense saved.";
+}
+
+function editExpense(id) {
+  const e = getExpenses().find(x => x.id === id);
+  if (!e) return;
+  document.getElementById("expId").value = e.id;
+  document.getElementById("expDate").value = e.date || "";
+  document.getElementById("expCategory").value = e.category || "Other";
+  document.getElementById("expTitle").value = e.title || "";
+  document.getElementById("expAmount").value = e.amount != null ? e.amount : "";
+  document.getElementById("expPaidTo").value = e.paidTo || "";
+  document.getElementById("expNote").value = e.note || "";
+  switchTab("expenses");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function deleteExpense(id) {
+  if (!confirm("Delete this expense?")) return;
+  setExpenses(getExpenses().filter(x => x.id !== id));
+  renderExpensesAdmin();
+  const msg = document.getElementById("expMsg");
+  if (msg) { msg.style.color = "#155724"; msg.textContent = "Expense deleted."; }
+}
+
+function filteredExpenses() {
+  const month = (document.getElementById("expFilterMonth") || {}).value || "";
+  let list = getExpenses().slice();
+  if (month) list = list.filter(e => String(e.date || "").slice(0, 7) === month);
+  list.sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  return list;
+}
+
+function renderExpensesAdmin() {
+  const body = document.getElementById("expListBody");
+  const countEl = document.getElementById("expCount");
+  const totalEl = document.getElementById("expFilterTotal");
+  if (!body) return;
+  const list = filteredExpenses();
+  const total = list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  if (countEl) countEl.textContent = list.length + " record(s)";
+  if (totalEl) {
+    const month = (document.getElementById("expFilterMonth") || {}).value || "";
+    totalEl.textContent = "Total" + (month ? " for " + month : "") + ": ₦" +
+      total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  }
+  if (!list.length) {
+    body.innerHTML = '<tr><td colspan="7" style="color:#888;">No expenses recorded yet.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(e => `<tr>
+    <td>${escapeHtml(e.date || "")}</td>
+    <td>${escapeHtml(e.category || "")}</td>
+    <td class="wrap-cell">${escapeHtml(e.title || "")}</td>
+    <td>${escapeHtml(e.paidTo || "—")}</td>
+    <td>${Number(e.amount || 0).toLocaleString()}</td>
+    <td class="wrap-cell">${escapeHtml(e.note || "")}</td>
+    <td>
+      <button type="button" class="actionBtn secondary" onclick="editExpense('${escapeHtml(e.id)}')">Edit</button>
+      <button type="button" class="actionBtn danger" onclick="deleteExpense('${escapeHtml(e.id)}')">Delete</button>
+    </td>
+  </tr>`).join("");
+}
+
+function printExpenses() {
+  const list = filteredExpenses();
+  const month = (document.getElementById("expFilterMonth") || {}).value || "";
+  const total = list.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+  document.getElementById("printExpMeta").textContent =
+    (month ? "Month: " + month + " · " : "All months · ") +
+    list.length + " record(s) · Printed " + new Date().toLocaleString();
+  document.getElementById("printExpBody").innerHTML = list.length
+    ? list.map(e => `<tr>
+        <td>${escapeHtml(e.date || "")}</td>
+        <td>${escapeHtml(e.category || "")}</td>
+        <td>${escapeHtml(e.title || "")}</td>
+        <td>${escapeHtml(e.paidTo || "—")}</td>
+        <td>${Number(e.amount || 0).toLocaleString()}</td>
+        <td>${escapeHtml(e.note || "")}</td>
+      </tr>`).join("")
+    : '<tr><td colspan="6">No expenses.</td></tr>';
+  document.getElementById("printExpTotal").textContent =
+    "Total: ₦" + total.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+
+  // Hide members print block while printing expenses
+  const membersPrint = document.getElementById("printArea");
+  const expPrint = document.getElementById("printExpensesArea");
+  if (membersPrint) membersPrint.style.display = "none";
+  if (expPrint) expPrint.style.display = "block";
+  window.print();
+  setTimeout(() => {
+    if (membersPrint) membersPrint.style.display = "";
+    if (expPrint) expPrint.style.display = "none";
+  }, 500);
+}
+
+function initExpensesTab() {
+  if (!document.getElementById("expDate").value) {
+    document.getElementById("expDate").value = new Date().toISOString().slice(0, 10);
+  }
+  // Prefer remote store if available
+  if (window.AdagborStore) {
+    AdagborStore.load("expenses", getExpenses()).then(v => {
+      if (Array.isArray(v)) {
+        localStorage.setItem(EXP_KEY, JSON.stringify(v));
+      }
+      renderExpensesAdmin();
+    }).catch(() => renderExpensesAdmin());
+  } else {
+    renderExpensesAdmin();
+  }
 }
 
 /* ---- SMS (KudiSMS promotional via Worker) ---- */
