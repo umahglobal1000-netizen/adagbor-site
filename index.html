@@ -59,6 +59,10 @@
   .exec-card .line{font-size:14px;margin:6px 0;}
   .exec-card a{color:var(--green);text-decoration:none;}
   #emptyExec{display:none;padding:20px;border:1px dashed var(--rule);border-radius:6px;color:var(--ink-soft);font-size:14px;}
+  .gal-card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:14px;}
+  .gal-card .gal-media{width:100%;aspect-ratio:16/9;border:0;border-radius:4px;background:#0e1a12;display:block;}
+  .gal-card h3{font-size:16px;margin:12px 0 4px;}
+  .gal-card p{margin:0;font-size:13.5px;color:var(--ink-soft);}
   footer{padding:28px 0;font-size:13px;color:var(--ink-soft);}
   @media (max-width:720px){
     .nav-toggle{display:block;}
@@ -84,6 +88,7 @@
       <a href="#home" data-nav>Home</a>
       <a href="#about" data-nav>About</a>
       <a href="#events" data-nav>Events</a>
+      <a href="#gallery" data-nav>Gallery</a>
       <a href="membership.html">Membership</a>
       <a href="#contact" data-nav>Contact</a>
       <a href="login.html">Login</a>
@@ -155,6 +160,17 @@
       <div class="card"><div class="meta">BRANCH · TBA</div><h3>Branch meetings</h3><p>Local sittings ahead of the general assembly.</p></div>
       <div class="card"><div class="meta">ONGOING</div><h3>Membership drive</h3><p>Entry to the 2027 register remains open for descendants of every branch.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section class="section" id="gallery">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Highlights</div>
+    <h2>Gallery</h2>
+    <p class="sub">Video moments from our gatherings and family life.</p>
+    <div id="galEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No gallery items yet.</div>
+    <div class="card-grid" id="galGrid"></div>
   </div>
 </section>
 
@@ -254,6 +270,48 @@
     ).join('');
   }
   loadPublicAnnouncements();
+
+  function galVideoEmbed(url) {
+    url = String(url || '').trim();
+    if (!url) return '';
+    // YouTube: watch?v=, youtu.be/, shorts/
+    let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{6,})/);
+    if (m) {
+      return '<iframe class="gal-media" src="https://www.youtube.com/embed/' + m[1] + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+    }
+    // Facebook video links
+    if (/facebook\.com|fb\.watch/i.test(url)) {
+      return '<iframe class="gal-media" src="https://www.facebook.com/plugins/video.php?href=' + encodeURIComponent(url) + '&show_text=false" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen loading="lazy"></iframe>';
+    }
+    // Direct video file (e.g. Cloudinary upload)
+    return '<video class="gal-media" controls playsinline preload="metadata"><source src="' + escapeHtml(url) + '"></video>';
+  }
+
+  async function loadPublicGallery() {
+    let list = [];
+    if (window.AdagborStore) {
+      const v = await AdagborStore.load("gallery", []);
+      if (Array.isArray(v)) list = v;
+    }
+    list = (list || []).filter(g => g && g.active !== false && g.videoUrl);
+    const empty = document.getElementById('galEmpty');
+    const grid = document.getElementById('galGrid');
+    if (!grid) return;
+    if (!list.length) {
+      empty.style.display = 'block';
+      grid.innerHTML = '';
+      return;
+    }
+    empty.style.display = 'none';
+    list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    grid.innerHTML = list.map(g =>
+      '<div class="gal-card">' + galVideoEmbed(g.videoUrl) +
+      '<h3>' + escapeHtml(g.title || '') + '</h3>' +
+      (g.text ? '<p>' + escapeHtml(g.text) + '</p>' : '') +
+      '</div>'
+    ).join('');
+  }
+  loadPublicGallery();
 
 </script>
 </body>
