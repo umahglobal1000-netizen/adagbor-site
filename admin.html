@@ -51,6 +51,29 @@
   .tab { padding: 10px 14px; background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; font-size: 14px; color: #555; display: inline-flex; align-items: center; gap: 7px; }
   .tab.active { color: #1e4d2b; border-bottom-color: #1e4d2b; font-weight: 600; }
   .tab-icon { width: 18px; height: 18px; flex-shrink: 0; }
+  .ann-ticker {
+    background: #4a3f22;
+    color: #f5f0e1;
+    overflow: hidden;
+    white-space: nowrap;
+    border-radius: 6px;
+    margin: 0 0 18px;
+    padding: 9px 0;
+    cursor: pointer;
+  }
+  .ann-ticker-track {
+    display: inline-block;
+    padding-left: 100%;
+    will-change: transform;
+    animation: ann-scroll 28s linear infinite;
+    font-size: 0.9rem;
+    letter-spacing: 0.2px;
+  }
+  .ann-ticker:hover .ann-ticker-track { animation-play-state: paused; }
+  @keyframes ann-scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
   .tab-panel { display: none; }
   .tab-panel.active { display: block; }
   .thumb { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd; background: #f0ece1; vertical-align: middle; }
@@ -114,6 +137,10 @@
 </header>
 
 <div class="wrap">
+  <div id="annTicker" class="ann-ticker" style="display:none;" onclick="switchTab('announcements')" title="Tap to view all announcements">
+    <div class="ann-ticker-track" id="annTickerTrack"></div>
+  </div>
+
   <div id="loginBox">
     <h2>Admin login</h2>
     <p>Enter the admin key to manage applications, directory, contributions, and executive contacts.</p>
@@ -1470,6 +1497,7 @@ function saveAnnouncement() {
   setAnnouncements(list);
   clearAnnouncementForm();
   renderAnnouncementsAdmin();
+  loadAnnouncementTicker();
   document.getElementById("annMsg").textContent = "Saved.";
 }
 
@@ -1487,6 +1515,7 @@ function deleteAnnouncement(id) {
   if (!confirm("Delete this announcement?")) return;
   setAnnouncements(getAnnouncements().filter(x => x.id !== id));
   renderAnnouncementsAdmin();
+  loadAnnouncementTicker();
 }
 
 function renderAnnouncementsAdmin() {
@@ -1604,12 +1633,31 @@ function downloadExecutivesJson() {
   URL.revokeObjectURL(a.href);
 }
 
+function loadAnnouncementTicker() {
+  const ticker = document.getElementById("annTicker");
+  const track = document.getElementById("annTickerTrack");
+  if (!ticker || !track) return;
+  const list = getAnnouncements()
+    .filter(a => a.active !== false)
+    .slice().sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+  if (!list.length) {
+    ticker.style.display = "none";
+    return;
+  }
+  const text = list.map(a => (a.title || "").trim()).filter(Boolean).join("     •     ");
+  track.textContent = text;
+  ticker.style.display = "block";
+  const duration = Math.max(16, Math.min(60, Math.round(text.length / 8)));
+  track.style.animationDuration = duration + "s";
+}
+
 window.addEventListener("DOMContentLoaded", () => {
   const stored = sessionStorage.getItem("adminKey");
   if (stored) {
     document.getElementById("adminKeyInput").value = stored;
     login();
   }
+  loadAnnouncementTicker();
 });
 </script>
 </body>
