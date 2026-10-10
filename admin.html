@@ -349,15 +349,11 @@
     <div id="tab-contributions" class="tab-panel">
       <div class="panel" id="sheetPanel">
         <h2>Contribution sheet</h2>
-        <p class="hint">Choose the type of contribution and the date. All approved members are listed alphabetically. Add each payment as it comes in and the total goes up straight away.</p>
+        <p class="hint">Choose a type of contribution and a date. To make a new type, pick “+ Create new type…” in the list. Members are listed alphabetically with what they paid for this type only. Add each payment as it comes in and the total goes up straight away.</p>
         <div class="form-row three">
           <div>
             <label for="sheetType">Type of contribution</label>
-            <select id="sheetType" onchange="onSheetTypeChange()">
-              <option value="registration">Registration fee</option>
-              <option value="monthly">Monthly fee</option>
-              <option value="other">Other contribution</option>
-            </select>
+            <select id="sheetType" onchange="onSheetTypeChange()"></select>
           </div>
           <div>
             <label for="sheetDate">Date</label>
@@ -367,15 +363,29 @@
             <label for="sheetPeriod">Month paid for</label>
             <input type="month" id="sheetPeriod">
           </div>
-          <div id="sheetOtherWrap" style="display:none;">
-            <label for="sheetOtherName">Contribution name</label>
-            <input type="text" id="sheetOtherName" placeholder="e.g. Building levy" oninput="renderContribSheet()">
+          <div id="sheetNewWrap" style="display:none;">
+            <label for="sheetNewName">New contribution type</label>
+            <input type="text" id="sheetNewName" placeholder="e.g. Building levy" onkeydown="if(event.key==='Enter'){createContribType();}">
+            <div style="margin-top:6px;display:flex;gap:6px;">
+              <button type="button" class="actionBtn" onclick="createContribType()">Create</button>
+              <button type="button" class="actionBtn secondary" onclick="cancelNewType()">Cancel</button>
+            </div>
           </div>
         </div>
         <div class="total-card" style="margin:12px 0;">
           <div class="label" id="sheetTotalLabel"></div>
           <div class="value" id="sheetTotalValue">₦0</div>
           <div class="sub" id="sheetTotalSub"></div>
+        </div>
+        <div class="toolbar">
+          <label style="font-size:13px;color:#555;">Show
+            <select id="sheetShow" onchange="renderContribSheet()">
+              <option value="all">All members</option>
+              <option value="paid">Members who have paid this type</option>
+              <option value="unpaid">Not yet paid on this date</option>
+            </select>
+          </label>
+          <button type="button" class="actionBtn danger" id="sheetRemoveType" style="display:none;" onclick="removeContribType()">Remove this type</button>
         </div>
         <div class="toolbar">
           <input type="search" id="sheetSearch" placeholder="Search member" oninput="renderContribSheet()" style="flex:1;min-width:160px;">
@@ -387,7 +397,7 @@
         <div id="sheetMsg" style="font-size:13px;margin-bottom:8px;"></div>
         <div class="tableScroll">
           <table>
-            <thead><tr><th>#</th><th>Member</th><th>Paid on this date (₦)</th><th>Add payment (₦)</th></tr></thead>
+            <thead><tr><th>#</th><th>Member</th><th>Paid on this date (₦)</th><th>All dates, this type (₦)</th><th>Add payment (₦)</th></tr></thead>
             <tbody id="sheetBody"></tbody>
           </table>
         </div>
@@ -927,7 +937,7 @@
   <h1 id="printSheetTitle"></h1>
   <div class="meta" id="printSheetMeta"></div>
   <table>
-    <thead><tr><th>#</th><th>Member</th><th>Amount paid (₦)</th></tr></thead>
+    <thead><tr><th>#</th><th>Member</th><th>Paid on this date (₦)</th><th>All dates (₦)</th></tr></thead>
     <tbody id="printSheetBody"></tbody>
   </table>
   <p id="printSheetTotal" style="margin-top:12px;font-size:14px;font-weight:700;"></p>
@@ -1900,6 +1910,10 @@ function currentPaymentTypeMeta() {
   if (val === "registration") return { id: "registration", name: "Registration fee", kind: "registration" };
   if (val === "monthly") return { id: "monthly", name: "Monthly fee", kind: "monthly" };
   if (val === "donation") return { id: "donation", name: "Voluntary Contribution", kind: "donation" };
+  if (String(val).startsWith("ct_")) {
+    const t = getCustomTypes().find(x => x.id === val);
+    if (t) return { id: t.id, name: t.name, kind: "custom" };
+  }
   const name = (document.getElementById("payOtherName").value || "").trim() || "Other contribution";
   return { id: "other", name, kind: "custom" };
 }
@@ -2019,6 +2033,7 @@ function deletePayment(id) {
 }
 
 function initContributionsTab() {
+  fillPayTypeOptions();
   fillPayMemberSelect();
   fillBeneficiarySelect();
   const today = new Date().toISOString().slice(0, 10);
@@ -2034,26 +2049,138 @@ function initContributionsTab() {
   initContribSheet();
 }
 
-/* ---- Contribution sheet: all members for one type + date ---- */
+/* ---- Contribution types (created by admin) ---- */
+
+const CONTRIB_TYPES_KEY = "adagbor_contribution_types";
+let sheetLastType = "registration";
+
+function getCustomTypes() {
+  try {
+    const raw = localStorage.getItem(CONTRIB_TYPES_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function setCustomTypes(list) {
+  localStorage.setItem(CONTRIB_TYPES_KEY, JSON.stringify(list));
+  if (window.AdagborStore) AdagborStore.save("contribution_types", list, adminKey);
+}
+
+// Built-in types, then types the admin created, then older free-text "Other" names found in saved payments.
+function allContribTypes() {
+  const list = [
+    { id: "registration", name: "Registration fee", kind: "registration" },
+    { id: "monthly", name: "Monthly fee", kind: "monthly" }
+  ];
+  getCustomTypes().forEach(t => list.push({ id: t.id, name: t.name, kind: "custom" }));
+  const have = new Set(list.map(t => t.name.toLowerCase()));
+  getPayments().forEach(p => {
+    if (p.typeId === "other" && p.typeName && !have.has(String(p.typeName).toLowerCase())) {
+      have.add(String(p.typeName).toLowerCase());
+      list.push({ id: "other", name: p.typeName, kind: "custom" });
+    }
+  });
+  return list;
+}
+
+function typeOptionKey(t) {
+  return t.id === "other" ? "other::" + t.name : t.id;
+}
+
+function fillPayTypeOptions() {
+  const sel = document.getElementById("payType");
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML =
+    '<option value="registration">Registration fee</option>' +
+    '<option value="monthly">Monthly fee</option>' +
+    '<option value="donation">Voluntary Contribution</option>' +
+    getCustomTypes().map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join("") +
+    '<option value="other">Other Contribution</option>';
+  if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+}
+
+function fillSheetTypeSelect(selectKey) {
+  const sel = document.getElementById("sheetType");
+  const prev = selectKey || (sel.value === "__new__" ? sheetLastType : sel.value);
+  const types = allContribTypes();
+  sel.innerHTML = types.map(t =>
+    `<option value="${escapeHtml(typeOptionKey(t))}">${escapeHtml(t.name)}</option>`).join("") +
+    '<option value="__new__">+ Create new type…</option>';
+  const keys = types.map(typeOptionKey);
+  sel.value = keys.includes(prev) ? prev : keys[0];
+  sheetLastType = sel.value;
+}
+
+function sheetMsgSet(text, ok) {
+  const msg = document.getElementById("sheetMsg");
+  msg.style.color = ok ? "#155724" : "#b00020";
+  msg.textContent = text;
+}
+
+function createContribType() {
+  const input = document.getElementById("sheetNewName");
+  const name = input.value.trim().replace(/\s+/g, " ");
+  if (name.length < 2) { sheetMsgSet("Enter a name for the new contribution type.", false); return; }
+  if (allContribTypes().some(t => t.name.toLowerCase() === name.toLowerCase())) {
+    sheetMsgSet("A contribution type with that name already exists.", false);
+    return;
+  }
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 30);
+  const id = "ct_" + slug + "_" + Math.random().toString(36).slice(2, 6);
+  const list = getCustomTypes();
+  list.push({ id, name, createdAt: new Date().toISOString() });
+  setCustomTypes(list);
+  input.value = "";
+  fillSheetTypeSelect(id);
+  fillPayTypeOptions();
+  onSheetTypeChange();
+  sheetMsgSet(`Created “${name}”. You can now record payments for it.`, true);
+}
+
+function cancelNewType() {
+  document.getElementById("sheetType").value = sheetLastType;
+  onSheetTypeChange();
+}
+
+function removeContribType() {
+  const t = sheetTypeMeta();
+  if (!String(t.id).startsWith("ct_")) return;
+  if (getPayments().some(p => p.typeId === t.id)) {
+    alert("This type has payments recorded, so it cannot be removed.");
+    return;
+  }
+  if (!confirm(`Remove the contribution type “${t.name}”?`)) return;
+  setCustomTypes(getCustomTypes().filter(x => x.id !== t.id));
+  fillSheetTypeSelect("registration");
+  fillPayTypeOptions();
+  onSheetTypeChange();
+  sheetMsgSet(`Removed “${t.name}”.`, true);
+}
+
+/* ---- Contribution sheet: members for one type + date ---- */
 
 let sheetRows = [];
 
 function sheetTypeMeta() {
-  const v = document.getElementById("sheetType").value;
-  if (v === "registration") return { id: "registration", name: "Registration fee", kind: "registration" };
-  if (v === "monthly") return { id: "monthly", name: "Monthly fee", kind: "monthly" };
-  const name = (document.getElementById("sheetOtherName").value || "").trim() || "Other contribution";
-  return { id: "other", name, kind: "custom" };
+  const sel = document.getElementById("sheetType");
+  const v = sel.value === "__new__" ? sheetLastType : sel.value;
+  const types = allContribTypes();
+  return types.find(t => typeOptionKey(t) === v) || types[0];
 }
 
 function sheetDateValue() {
   return document.getElementById("sheetDate").value || new Date().toISOString().slice(0, 10);
 }
 
+// date = null returns this type's payments on every date
 function sheetRecords(type, date) {
   return getPayments().filter(p =>
     p.typeId === type.id &&
-    (p.date || "") === date &&
+    (date == null || (p.date || "") === date) &&
     (type.id !== "other" || p.typeName === type.name));
 }
 
@@ -2065,9 +2192,17 @@ function sheetMemberPaid(m, recs) {
 }
 
 function onSheetTypeChange() {
-  const v = document.getElementById("sheetType").value;
-  document.getElementById("sheetOtherWrap").style.display = v === "other" ? "block" : "none";
-  document.getElementById("sheetPeriodWrap").style.display = v === "monthly" ? "block" : "none";
+  const sel = document.getElementById("sheetType");
+  const isNew = sel.value === "__new__";
+  document.getElementById("sheetNewWrap").style.display = isNew ? "block" : "none";
+  if (isNew) {
+    document.getElementById("sheetNewName").focus();
+    return;
+  }
+  sheetLastType = sel.value;
+  const t = sheetTypeMeta();
+  document.getElementById("sheetPeriodWrap").style.display = t.kind === "monthly" ? "block" : "none";
+  document.getElementById("sheetRemoveType").style.display = String(t.id).startsWith("ct_") ? "inline-block" : "none";
   renderContribSheet();
 }
 
@@ -2077,16 +2212,37 @@ function onSheetDateChange() {
   renderContribSheet();
 }
 
+function sheetShowLabel() {
+  const v = document.getElementById("sheetShow").value;
+  return v === "paid" ? "Members who have paid this type"
+    : v === "unpaid" ? "Not yet paid on this date" : "All members";
+}
+
+function sheetMembersFor(type, date, applySearch) {
+  const show = document.getElementById("sheetShow").value;
+  const recsDate = sheetRecords(type, date);
+  const recsAll = sheetRecords(type, null);
+  const q = applySearch ? (document.getElementById("sheetSearch").value || "").trim().toLowerCase() : "";
+  return approvedAlphabetical().filter(m => {
+    if (q && !String(m.full_name || "").toLowerCase().includes(q)) return false;
+    if (show === "paid") return sheetMemberPaid(m, recsAll) > 0;
+    if (show === "unpaid") return sheetMemberPaid(m, recsDate) === 0;
+    return true;
+  });
+}
+
 function updateSheetTotal() {
   const type = sheetTypeMeta();
   const date = sheetDateValue();
   const recs = sheetRecords(type, date);
+  const recsAll = sheetRecords(type, null);
   const total = recs.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  const totalAll = recsAll.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const payers = approvedAlphabetical().filter(m => sheetMemberPaid(m, recs) > 0).length;
   document.getElementById("sheetTotalLabel").textContent = `Total ${type.name} for ${date}`;
   document.getElementById("sheetTotalValue").textContent = "₦" + total.toLocaleString();
   document.getElementById("sheetTotalSub").textContent =
-    `${recs.length} payment${recs.length === 1 ? "" : "s"} from ${payers} member${payers === 1 ? "" : "s"}`;
+    `${recs.length} payment${recs.length === 1 ? "" : "s"} from ${payers} member${payers === 1 ? "" : "s"}. All dates for this type: ₦${totalAll.toLocaleString()}`;
 }
 
 function renderContribSheet() {
@@ -2094,34 +2250,34 @@ function renderContribSheet() {
   if (!body) return;
   const type = sheetTypeMeta();
   const date = sheetDateValue();
-  const recs = sheetRecords(type, date);
-  const q = (document.getElementById("sheetSearch").value || "").trim().toLowerCase();
-  sheetRows = approvedAlphabetical().filter(m => !q || String(m.full_name || "").toLowerCase().includes(q));
+  const recsDate = sheetRecords(type, date);
+  const recsAll = sheetRecords(type, null);
+  sheetRows = sheetMembersFor(type, date, true);
   body.innerHTML = sheetRows.map((m, i) => {
-    const paid = sheetMemberPaid(m, recs);
+    const paid = sheetMemberPaid(m, recsDate);
+    const all = sheetMemberPaid(m, recsAll);
     return `<tr>
       <td>${i + 1}</td>
       <td>${escapeHtml(m.full_name || "")}</td>
       <td id="sheetPaid${i}" style="font-weight:600;">${paid > 0 ? paid.toLocaleString() : "—"}</td>
+      <td id="sheetAll${i}">${all > 0 ? all.toLocaleString() : "—"}</td>
       <td style="white-space:nowrap;">
         <input type="number" class="amt-input" id="sheetAmt${i}" min="0" step="0.01" placeholder="0.00"
           onkeydown="if(event.key==='Enter'){sheetAdd(${i});}">
         <button type="button" class="actionBtn" onclick="sheetAdd(${i})">Add</button>
       </td>
     </tr>`;
-  }).join("") || '<tr><td colspan="4" style="color:#888;">No approved members found.</td></tr>';
+  }).join("") || '<tr><td colspan="5" style="color:#888;">No members match this view.</td></tr>';
   updateSheetTotal();
 }
 
 function sheetAdd(i) {
   const m = sheetRows[i];
-  const msg = document.getElementById("sheetMsg");
   if (!m) return;
-  msg.style.color = "#b00020";
   const input = document.getElementById("sheetAmt" + i);
   const amount = parseFloat(input.value);
   if (!(amount > 0)) {
-    msg.textContent = `Enter an amount greater than zero for ${m.full_name || "this member"}.`;
+    sheetMsgSet(`Enter an amount greater than zero for ${m.full_name || "this member"}.`, false);
     input.focus();
     return;
   }
@@ -2151,12 +2307,12 @@ function sheetAdd(i) {
   }]);
 
   input.value = "";
-  const recs = sheetRecords(type, date);
-  const paid = sheetMemberPaid(m, recs);
+  const paid = sheetMemberPaid(m, sheetRecords(type, date));
+  const all = sheetMemberPaid(m, sheetRecords(type, null));
   document.getElementById("sheetPaid" + i).textContent = paid > 0 ? paid.toLocaleString() : "—";
+  document.getElementById("sheetAll" + i).textContent = all > 0 ? all.toLocaleString() : "—";
   updateSheetTotal();
-  msg.style.color = "#155724";
-  msg.textContent = `Added ₦${amount.toLocaleString()} for ${m.full_name || "member"}.`;
+  sheetMsgSet(`Added ₦${amount.toLocaleString()} for ${m.full_name || "member"}.`, true);
   renderPayDayTotal();
   renderContributionTotals();
 }
@@ -2164,10 +2320,15 @@ function sheetAdd(i) {
 function sheetFullListData() {
   const type = sheetTypeMeta();
   const date = sheetDateValue();
-  const recs = sheetRecords(type, date);
-  const rows = approvedAlphabetical().map(m => ({ name: m.full_name || "", paid: sheetMemberPaid(m, recs) }));
-  const total = recs.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  return { type, date, rows, total };
+  const recsDate = sheetRecords(type, date);
+  const recsAll = sheetRecords(type, null);
+  const rows = sheetMembersFor(type, date, false).map(m => ({
+    name: m.full_name || "",
+    paid: sheetMemberPaid(m, recsDate),
+    all: sheetMemberPaid(m, recsAll)
+  }));
+  const total = recsDate.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+  return { type, date, rows, total, show: sheetShowLabel() };
 }
 
 function printContribSheet() {
@@ -2176,11 +2337,11 @@ function printContribSheet() {
   document.getElementById("printSheetTitle").textContent =
     `Adagbor Descendant Association — ${d.type.name}`;
   document.getElementById("printSheetMeta").textContent =
-    `Date: ${d.date} | ${d.rows.length} member(s) | Printed ${new Date().toLocaleString()}`;
+    `Date: ${d.date} | ${d.show} | ${d.rows.length} member(s) | Printed ${new Date().toLocaleString()}`;
   document.getElementById("printSheetBody").innerHTML = d.rows.map((r, i) =>
-    `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}</td><td>${r.paid > 0 ? r.paid.toLocaleString() : ""}</td></tr>`
+    `<tr><td>${i + 1}</td><td>${escapeHtml(r.name)}</td><td>${r.paid > 0 ? r.paid.toLocaleString() : ""}</td><td>${r.all > 0 ? r.all.toLocaleString() : ""}</td></tr>`
   ).join("");
-  document.getElementById("printSheetTotal").textContent = `Total: ₦${d.total.toLocaleString()}`;
+  document.getElementById("printSheetTotal").textContent = `Total for ${d.date}: ₦${d.total.toLocaleString()}`;
   document.body.classList.add("printing-sheet");
   const cleanup = () => document.body.classList.remove("printing-sheet");
   window.addEventListener("afterprint", cleanup, { once: true });
@@ -2202,12 +2363,12 @@ function downloadContribSheetPdf() {
   doc.text(`Adagbor Descendant Association — ${d.type.name}`, 40, 36);
   doc.setFontSize(9);
   doc.setTextColor(80);
-  doc.text(`Date: ${d.date}  |  ${d.rows.length} member(s)  |  ${new Date().toLocaleString()}`, 40, 52);
+  doc.text(`Date: ${d.date}  |  ${d.show}  |  ${d.rows.length} member(s)  |  ${new Date().toLocaleString()}`, 40, 52);
   doc.autoTable({
     startY: 68,
-    head: [["#", "Member", "Amount paid (N)"]],
-    body: d.rows.map((r, i) => [String(i + 1), r.name, r.paid > 0 ? r.paid.toLocaleString() : ""]),
-    foot: [["", "Total", d.total.toLocaleString()]],
+    head: [["#", "Member", "Paid on this date (N)", "All dates (N)"]],
+    body: d.rows.map((r, i) => [String(i + 1), r.name, r.paid > 0 ? r.paid.toLocaleString() : "", r.all > 0 ? r.all.toLocaleString() : ""]),
+    foot: [["", "Total for this date", d.total.toLocaleString(), ""]],
     styles: { fontSize: 10, cellPadding: 5 },
     headStyles: { fillColor: [30, 77, 43], textColor: 255 },
     footStyles: { fillColor: [240, 236, 225], textColor: 20, fontStyle: "bold" },
@@ -2223,7 +2384,19 @@ function initContribSheet() {
   if (!dateEl.value) dateEl.value = today;
   const periodEl = document.getElementById("sheetPeriod");
   if (!periodEl.value) periodEl.value = dateEl.value.slice(0, 7);
+  fillSheetTypeSelect();
   onSheetTypeChange();
+  if (window.AdagborStore && !initContribSheet.synced) {
+    initContribSheet.synced = true;
+    AdagborStore.load("contribution_types", getCustomTypes()).then(v => {
+      if (Array.isArray(v) && v.length) {
+        localStorage.setItem(CONTRIB_TYPES_KEY, JSON.stringify(v));
+        fillSheetTypeSelect();
+        fillPayTypeOptions();
+        onSheetTypeChange();
+      }
+    }).catch(() => {});
+  }
 }
 
 function onTotalsModeChange() {
