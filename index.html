@@ -128,6 +128,17 @@
     nav a{padding:14px 24px;border-top:1px solid var(--rule);border-bottom:none;}
     .hero h1{font-size:30px;}
   }
+
+  /* Contributions total */
+  .contrib-box{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:24px;max-width:520px;}
+  .contrib-box label{display:block;font-size:12px;color:var(--brass);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;}
+  .contrib-box select{width:100%;padding:12px 14px;font-size:15px;font-family:inherit;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:2px;}
+  .contrib-total{font-family:'Fraunces',serif;font-size:40px;color:var(--green);margin-top:20px;line-height:1.1;}
+  .contrib-note{font-size:13px;color:var(--ink-soft);margin-top:6px;}
+  .contrib-break{margin-top:18px;border-top:1px solid var(--rule);}
+  .contrib-break div{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--rule);font-size:14px;}
+  .contrib-break span:last-child{font-weight:600;}
+  #contribError{display:none;color:var(--rust);font-size:14px;margin-top:12px;}
 </style>
 <script src="data-sync.js"></script>
 </head>
@@ -145,6 +156,7 @@
       <a href="#home" data-nav>Home</a>
       <a href="#about" data-nav>About</a>
       <a href="#events" data-nav>Events</a>
+      <a href="#contributions" data-nav>Contributions</a>
       <a href="#gallery" data-nav>Gallery</a>
       <a href="membership.html">Membership</a>
       <a href="#contact" data-nav>Contact</a>
@@ -227,6 +239,23 @@
     <p class="sub">From annual conventions to branch meetings — the moments we come together.</p>
     <div id="publicEventsEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No events published yet.</div>
     <div class="card-grid" id="publicEventsList"></div>
+  </div>
+</section>
+
+<!-- CONTRIBUTIONS -->
+<section class="section" id="contributions">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Contributions</div>
+    <h2>What the family has contributed</h2>
+    <p class="sub">Choose a type of contribution to see the total received. Only totals are shown here.</p>
+    <div class="contrib-box">
+      <label for="contribSelect">Type of contribution</label>
+      <select id="contribSelect" disabled><option>Loading…</option></select>
+      <div class="contrib-total" id="contribTotal">₦0</div>
+      <div class="contrib-note" id="contribNote"></div>
+      <div class="contrib-break" id="contribBreak"></div>
+      <div id="contribError">Totals are not available right now. Please try again later.</div>
+    </div>
   </div>
 </section>
 
@@ -393,6 +422,46 @@
     ).join('');
   }
   loadPublicGallery();
+
+  let contribData = null;
+  const CONTRIB_API = "https://adagbor-api.umahglobal1000.workers.dev";
+  function naira(n) { return '\u20A6' + Number(n || 0).toLocaleString('en-NG'); }
+  function renderContrib() {
+    if (!contribData) return;
+    const sel = document.getElementById('contribSelect');
+    const totalEl = document.getElementById('contribTotal');
+    const note = document.getElementById('contribNote');
+    const brk = document.getElementById('contribBreak');
+    if (sel.value === '__all__') {
+      totalEl.textContent = naira(contribData.total);
+      note.textContent = contribData.count + ' payment' + (contribData.count === 1 ? '' : 's') + ' in total';
+      brk.innerHTML = (contribData.types || []).map(t =>
+        '<div><span>' + escapeHtml(t.name) + '</span><span>' + naira(t.total) + '</span></div>').join('');
+    } else {
+      const t = (contribData.types || []).find(x => x.name === sel.value);
+      totalEl.textContent = naira(t ? t.total : 0);
+      note.textContent = t ? t.count + ' payment' + (t.count === 1 ? '' : 's') : '';
+      brk.innerHTML = '';
+    }
+  }
+  async function loadContribTotals() {
+    const sel = document.getElementById('contribSelect');
+    try {
+      const res = await fetch(CONTRIB_API + '/api/public/contribution-totals');
+      if (!res.ok) throw new Error('bad status');
+      contribData = await res.json();
+      sel.innerHTML = '<option value="__all__">All contributions</option>' +
+        (contribData.types || []).map(t =>
+          '<option value="' + escapeHtml(t.name) + '">' + escapeHtml(t.name) + '</option>').join('');
+      sel.disabled = false;
+      sel.addEventListener('change', renderContrib);
+      renderContrib();
+    } catch (e) {
+      sel.innerHTML = '<option>Unavailable</option>';
+      document.getElementById('contribError').style.display = 'block';
+    }
+  }
+  loadContribTotals();
 
 </script>
 </body>
