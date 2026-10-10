@@ -1888,6 +1888,36 @@ function getPayments() {
   }
 }
 
+// Private data (payments, expenses) is only readable with the admin key.
+async function adminStoreLoad(key, fallback) {
+  try {
+    const res = await fetch(`${API_BASE}/api/store/${encodeURIComponent(key)}`, {
+      headers: { "X-Admin-Key": adminKey }
+    });
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    return data && data.value != null ? data.value : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+// Merge payments saved on the server into this device (matched by id), so a
+// fresh device never starts from an empty list and overwrites the server copy.
+async function syncPaymentsFromServer() {
+  const remote = await adminStoreLoad("payments", null);
+  if (!Array.isArray(remote)) return;
+  const local = getPayments();
+  const have = new Set(local.map(p => p && p.id));
+  const extra = remote.filter(p => p && p.id && !have.has(p.id));
+  if (!extra.length) return;
+  localStorage.setItem(CONTRIB_PAY_KEY, JSON.stringify(local.concat(extra)));
+  if (document.getElementById("sheetBody")) {
+    renderContribSheet();
+    if (typeof renderContributionTotals === "function") renderContributionTotals();
+  }
+}
+
 function setPayments(list) {
   localStorage.setItem(CONTRIB_PAY_KEY, JSON.stringify(list));
   if (window.AdagborStore) AdagborStore.save("payments", list, adminKey);
@@ -2055,6 +2085,7 @@ function deletePayment(id) {
 }
 
 function initContributionsTab() {
+  syncPaymentsFromServer();
   fillPayTypeOptions();
   fillPayMemberSelect();
   fillBeneficiarySelect();
@@ -3618,16 +3649,12 @@ function initExpensesTab() {
     document.getElementById("expDate").value = new Date().toISOString().slice(0, 10);
   }
   // Prefer remote store if available
-  if (window.AdagborStore) {
-    AdagborStore.load("expenses", getExpenses()).then(v => {
-      if (Array.isArray(v)) {
-        localStorage.setItem(EXP_KEY, JSON.stringify(v));
-      }
-      renderExpensesAdmin();
-    }).catch(() => renderExpensesAdmin());
-  } else {
+  adminStoreLoad("expenses", null).then(v => {
+    if (Array.isArray(v)) {
+      localStorage.setItem(EXP_KEY, JSON.stringify(v));
+    }
     renderExpensesAdmin();
-  }
+  }).catch(() => renderExpensesAdmin());
 }
 
 /* ---- SMS (KudiSMS promotional via Worker) ---- */

@@ -818,19 +818,21 @@ let cachedMemberPayments = [];
 let cachedContribTypes = [];
 
 
-async function loadAllPayments() {
-  if (window.AdagborStore) {
-    const v = await AdagborStore.load("payments", []);
-    return Array.isArray(v) ? v : [];
-  }
+// Private data now comes from the Worker, filtered to the logged-in member.
+async function loadMemberData(key, fallback) {
   try {
-    const raw = localStorage.getItem(CONTRIB_PAY_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    }
-  } catch (e) {}
-  return [];
+    const res = await fetch(`${API_BASE}/api/member/data/${encodeURIComponent(key)}`, { credentials: "include" });
+    if (!res.ok) return fallback;
+    const data = await res.json();
+    return data && data.value != null ? data.value : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+async function loadAllPayments() {
+  const v = await loadMemberData("payments", []);
+  return Array.isArray(v) ? v : [];
 }
 
 async function loadPaymentHistory() {
@@ -1044,16 +1046,8 @@ async function loadMyAttendance() {
     msg.textContent = 'Profile not loaded.';
     return;
   }
-  let data = { sessions: [], records: [] };
-  if (window.AdagborStore) {
-    const v = await AdagborStore.load("attendance", { sessions: [], records: [] });
-    if (v && (v.sessions || v.records)) data = v;
-  } else {
-    try {
-      const raw = localStorage.getItem('adagbor_attendance');
-      if (raw) data = JSON.parse(raw);
-    } catch (e) {}
-  }
+  let data = await loadMemberData("attendance", { sessions: [], records: [] });
+  if (!data || !(data.sessions || data.records)) data = { sessions: [], records: [] };
 
   const mine = (data.records || []).filter(r => matchesCurrentMember(r, currentMember));
   const sessionMap = {};
@@ -1126,14 +1120,9 @@ async function loadMemberExpenses() {
   if (totalEl) totalEl.textContent = '';
 
   let list = [];
-  if (window.AdagborStore) {
-    const v = await AdagborStore.load('expenses', []);
+  {
+    const v = await loadMemberData('expenses', []);
     if (Array.isArray(v)) list = v;
-  } else {
-    try {
-      const raw = localStorage.getItem('adagbor_expenses');
-      if (raw) { const p = JSON.parse(raw); if (Array.isArray(p)) list = p; }
-    } catch (e) {}
   }
 
   const month = (document.getElementById('memberExpMonth') || {}).value || '';
