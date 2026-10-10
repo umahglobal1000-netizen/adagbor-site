@@ -292,17 +292,13 @@
     <div id="tab-manage" class="tab-panel">
       <div class="panel">
         <h2>Register members</h2>
-        <p class="hint">Type or paste one name per line. You can add a phone number after a comma, for example <b>Rabiu Dankadiri, 08012345678</b>. Each new member is approved straight away and gets a 6-digit PIN. Members log in with their surname and PIN.</p>
+        <p class="hint">Type or paste one name per line. You can add a phone number after a comma, for example <b>Rabiu Dankadiri, 08012345678</b>. Each new member is approved straight away. Choose <b>Register and generate PINs</b> to give them PINs now, or <b>Register only</b> to add them without PINs and generate PINs later, when required, in the Generate a PIN section below. Members log in with their surname and PIN.</p>
         <textarea id="manageNames" rows="7" placeholder="Rabiu Dankadiri&#10;Umar Haruna, 08036654156" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px;font-family:inherit;"></textarea>
-        <div class="form-actions" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;">
-          <button type="button" class="actionBtn secondary" onclick="managePasteNames()">Paste copied list</button>
-          <button type="button" class="actionBtn secondary" onclick="document.getElementById('manageCameraImage').click()">Scan list with camera</button>
-          <input type="file" id="manageCameraImage" accept="image/*" capture="environment" style="display:none" onchange="manageScanNamesImage(this.files && this.files[0])">
-          <button type="button" class="actionBtn" id="manageCreateBtn" onclick="manageCreateMembers()">Register and generate PINs</button>
+        <div class="form-actions" style="margin-top:10px;">
+          <button type="button" class="actionBtn" id="manageCreateBtn" onclick="manageCreateMembers(true)">Register and generate PINs</button>
+          <button type="button" class="actionBtn secondary" id="manageCreateOnlyBtn" onclick="manageCreateMembers(false)">Register only, PINs later</button>
           <button type="button" class="actionBtn secondary" onclick="openMemberAdd()">Add one member with full details</button>
         </div>
-        <div id="manageScanMsg" role="status" style="font-size:13px;margin-top:8px;"></div>
-        <div class="hint" style="margin-top:8px;">Camera scan reads a photo of a printed list (OCR). Review and correct the names in the box before registering. You can also copy a list from WhatsApp, Notes, Excel, or another document and paste it here.</div>
         <div id="manageCreateMsg" style="font-size:13px;margin-top:10px;"></div>
         <div id="manageIssues" style="font-size:13px;color:#856404;margin-top:8px;"></div>
       </div>
@@ -1059,6 +1055,13 @@
       <div><label>Next of kin name</label><input type="text" id="addKinName"></div>
       <div><label>Next of kin phone</label><input type="text" id="addKinPhone"></div>
     </div>
+    <div class="form-row">
+      <div style="grid-column: 1 / -1;">
+        <label style="display:flex;gap:8px;align-items:center;font-weight:400;font-size:13px;">
+          <input type="checkbox" id="addGeneratePin" checked style="width:auto;"> Generate a PIN now (untick to add the member and generate a PIN later)
+        </label>
+      </div>
+    </div>
     <div id="memberAddMsg"></div>
     <div class="form-actions">
       <button type="button" class="actionBtn" id="memberAddSaveBtn" onclick="saveMemberAdd()">Add member</button>
@@ -1257,7 +1260,7 @@ function fileToResizedDataUrl(file, maxSize, quality) {
 }
 
 function openMemberEdit(id) {
-  const m = allMembers.find(x => String(x.id) === String(id));
+  const m = allMembers.find(x => x.id === id);
   if (!m) return;
   editPendingPhoto = null;
   document.getElementById("editId").value = m.id;
@@ -1348,6 +1351,7 @@ function openMemberAdd() {
   document.getElementById("addAddress").value = "";
   document.getElementById("addKinName").value = "";
   document.getElementById("addKinPhone").value = "";
+  document.getElementById("addGeneratePin").checked = true;
   const msg = document.getElementById("memberAddMsg");
   msg.textContent = "";
   msg.className = "";
@@ -1380,6 +1384,7 @@ async function saveMemberAdd() {
     address: document.getElementById("addAddress").value.trim(),
     next_of_kin_name: document.getElementById("addKinName").value.trim(),
     next_of_kin_phone: document.getElementById("addKinPhone").value.trim(),
+    generate_pin: document.getElementById("addGeneratePin").checked,
   };
   try {
     const res = await fetch(`${API_BASE}/api/admin/members`, {
@@ -1394,9 +1399,9 @@ async function saveMemberAdd() {
     closeMemberAdd();
     if (data.password) {
       addToPinList({ id: data.id != null ? Number(data.id) : null, name: fullName, surname: surnameOf(fullName), phone, code: data.password });
-      showPasswordReveal(`PIN for ${fullName}`, data.password, "Share this PIN with the member directly. It will not be shown again. If no PIN was returned by the server, use Manage account → Generate a PIN.");
+      showPasswordReveal(`Password for ${fullName}`, data.password, "Share this with them directly — it will not be shown again. They can log in with their surname (or phone/email) and this PIN.");
     } else {
-      alert(`${fullName} was registered, but the server did not return a PIN. Use Manage account → Generate a PIN to create one.`);
+      alert(`${fullName} was added without a PIN. Generate one from Manage account when it is needed.`);
     }
   } catch (err) {
     msg.className = "err";
@@ -1415,7 +1420,7 @@ function surnameOf(name) {
 }
 
 function addToPinList(entry) {
-  if (entry.id != null) pinList = pinList.filter(e => String(e.id) !== String(entry.id));
+  if (entry.id != null) pinList = pinList.filter(e => e.id !== entry.id);
   pinList.push(entry);
   renderPinList();
 }
@@ -1515,65 +1520,11 @@ function pinCopyList() {
   }
 }
 
-async function managePasteNames() {
-  const ta = document.getElementById("manageNames");
-  const status = document.getElementById("manageScanMsg");
-  try {
-    if (!navigator.clipboard || !navigator.clipboard.readText) throw new Error("clipboard permission unavailable");
-    const pasted = await navigator.clipboard.readText();
-    if (!pasted.trim()) { status.textContent = "Clipboard is empty. Copy the member list first."; return; }
-    ta.value = [ta.value.trim(), pasted.trim()].filter(Boolean).join("\n");
-    status.style.color = "#1e4d2b";
-    status.textContent = "List pasted. Review the names, then tap Register and generate PINs.";
-  } catch (e) {
-    status.style.color = "#856404";
-    status.textContent = "Clipboard access was blocked. Tap inside the names box, long-press, then choose Paste.";
-    ta.focus();
-  }
-}
-
-async function manageScanNamesImage(file) {
-  const status = document.getElementById("manageScanMsg");
-  const input = document.getElementById("manageCameraImage");
-  if (!file) return;
-  status.style.color = "";
-  status.textContent = "Preparing camera scan…";
-  try {
-    if (!window.Tesseract) {
-      await new Promise((resolve, reject) => {
-        const script = document.createElement("script");
-        script.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-        script.onload = resolve;
-        script.onerror = () => reject(new Error("Could not load text recognition. Check your internet connection, or paste the list instead."));
-        document.head.appendChild(script);
-      });
-    }
-    status.textContent = "Reading the photo… keep this page open. This may take a little while.";
-    const result = await window.Tesseract.recognize(file, "eng", {
-      logger: m => {
-        if (m.status === "recognizing text" && typeof m.progress === "number") {
-          status.textContent = `Reading the photo… ${Math.round(m.progress * 100)}%`;
-        }
-      }
-    });
-    const extracted = String(result.data && result.data.text || "").trim();
-    if (!extracted) throw new Error("No readable text found. Try a clearer, well-lit photo with the list straight and in focus.");
-    const ta = document.getElementById("manageNames");
-    ta.value = [ta.value.trim(), extracted].filter(Boolean).join("\n");
-    status.style.color = "#1e4d2b";
-    status.textContent = "Scan complete. Check spelling and remove headings or unwanted text before registering.";
-    ta.focus();
-  } catch (e) {
-    status.style.color = "#b00020";
-    status.textContent = e.message || "Could not scan this image. You can paste the list instead.";
-  } finally {
-    if (input) input.value = "";
-  }
-}
-
-async function manageCreateMembers() {
+async function manageCreateMembers(withPin) {
+  if (withPin === undefined) withPin = true;
   const ta = document.getElementById("manageNames");
   const btn = document.getElementById("manageCreateBtn");
+  const btnOnly = document.getElementById("manageCreateOnlyBtn");
   const msg = document.getElementById("manageCreateMsg");
   const issuesEl = document.getElementById("manageIssues");
   const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
@@ -1586,7 +1537,8 @@ async function manageCreateMembers() {
   }
 
   btn.disabled = true;
-  const CHUNK = 25;
+  btnOnly.disabled = true;
+  const CHUNK = withPin ? 25 : 100;
   let done = 0;
   let created = 0;
   let failed = "";
@@ -1599,7 +1551,7 @@ async function manageCreateMembers() {
       const res = await fetch(`${API_BASE}/api/admin/members/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
-        body: JSON.stringify({ names: chunk })
+        body: JSON.stringify({ names: chunk, generate_pin: withPin })
       });
       let data = null;
       try { data = await res.json(); } catch (e) {}
@@ -1611,11 +1563,13 @@ async function manageCreateMembers() {
       (data.results || []).forEach(r => {
         if (r.status === "created") {
           created++;
-          addToPinList({
-            id: r.id != null ? Number(r.id) : null,
-            name: r.name, surname: r.surname || surnameOf(r.name),
-            phone: r.phone || "", code: r.code
-          });
+          if (r.code) {
+            addToPinList({
+              id: r.id != null ? Number(r.id) : null,
+              name: r.name, surname: r.surname || surnameOf(r.name),
+              phone: r.phone || "", code: r.code
+            });
+          }
         } else {
           issues.push(`${r.name}: ${r.reason || r.status}`);
         }
@@ -1628,6 +1582,7 @@ async function manageCreateMembers() {
   }
 
   btn.disabled = false;
+  btnOnly.disabled = false;
   ta.value = lines.slice(done).join("\n");
   await loadMembers();
   if (issues.length) issuesEl.textContent = "Not registered: " + issues.join("; ");
@@ -1636,11 +1591,13 @@ async function manageCreateMembers() {
     msg.textContent = `${failed} ${done} of ${lines.length} names were processed. The rest are still in the box.`;
   } else {
     msg.style.color = created ? "#155724" : "#856404";
-    msg.textContent = created
-      ? `${created} member(s) registered. Their PINs are in the PIN list below.`
-      : "No new members were registered.";
+    msg.textContent = !created
+      ? "No new members were registered."
+      : withPin
+        ? `${created} member(s) registered. Their PINs are in the PIN list below.`
+        : `${created} member(s) registered without PINs. When PINs are needed, use Generate a PIN below.`;
   }
-  if (created) {
+  if (created && withPin) {
     const panel = document.getElementById("managePinPanel");
     if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -1717,14 +1674,14 @@ function renderManageList() {
 async function manageGenerateSelected() {
   const msg = document.getElementById("manageBulkMsg");
   const btn = document.getElementById("manageBulkPinBtn");
-  const ids = [...manageSelected].filter(id => allMembers.some(m => String(m.id) === String(id)));
+  const ids = [...manageSelected].filter(id => allMembers.some(m => m.id === id));
   msg.style.color = "";
   if (!ids.length) {
     msg.style.color = "#b00020";
     msg.textContent = "Select at least one member.";
     return;
   }
-  const hasPin = ids.filter(id => allMembers.find(m => String(m.id) === String(id))?.has_pin).length;
+  const hasPin = ids.filter(id => allMembers.find(m => m.id === id).has_pin).length;
   const warn = hasPin ? ` ${hasPin} of them already have a PIN or password, which will stop working.` : "";
   if (!confirm(`Generate new PINs for ${ids.length} member(s)?${warn}`)) return;
 
@@ -1733,7 +1690,7 @@ async function manageGenerateSelected() {
   const failed = [];
   for (let i = 0; i < ids.length; i++) {
     const id = ids[i];
-    const m = allMembers.find(x => String(x.id) === String(id));
+    const m = allMembers.find(x => x.id === id);
     btn.textContent = `Generating ${i + 1} of ${ids.length}…`;
     try {
       const res = await fetch(`${API_BASE}/api/admin/members/${id}/generate-password`, {
@@ -1768,7 +1725,7 @@ async function manageGenerateSelected() {
 }
 
 async function manageGeneratePin(id) {
-  const m = allMembers.find(x => String(x.id) === String(id));
+  const m = allMembers.find(x => x.id === id);
   const label = m ? (m.full_name || "this member") : "this member";
   if (!confirm(`Generate a new PIN for ${label}? Their current PIN or password will stop working.`)) return;
   try {
@@ -1791,7 +1748,7 @@ async function manageGeneratePin(id) {
 }
 
 async function generateMemberPassword(id) {
-  const m = allMembers.find(x => String(x.id) === String(id));
+  const m = allMembers.find(x => x.id === id);
   const label = m ? (m.full_name || "this member") : "this member";
   if (!confirm(`Generate a new password for ${label}? Their current password will stop working.`)) return;
   try {
@@ -1830,7 +1787,7 @@ function copyRevealedPassword() {
 }
 
 async function deleteMember(id) {
-  const m = allMembers.find(x => String(x.id) === String(id));
+  const m = allMembers.find(x => x.id === id);
   const label = m ? (m.full_name || "this member") : "this member";
   if (!confirm(`Delete ${label}? This cannot be undone.`)) return;
   try {
