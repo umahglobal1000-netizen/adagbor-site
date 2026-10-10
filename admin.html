@@ -133,6 +133,19 @@
   .modal-photo-row .thumb, .modal-photo-row .thumb-ph { width: 64px; height: 64px; }
   #memberEditMsg { font-size: 13px; margin-top: 10px; color: #155724; }
   #memberEditMsg.err { color: #b00020; }
+  #printPinsArea { display: none; }
+  @media print {
+    body.printing-pins #printArea, body.printing-pins #printExpensesArea { display: none !important; }
+    body.printing-pins #printPinsArea, body.printing-pins #printPinsArea * { visibility: visible; }
+    body.printing-pins #printPinsArea {
+      display: block !important; position: absolute; left: 0; top: 0; width: 100%;
+      padding: 24px; font-family: Georgia, serif; color: #000;
+    }
+    body.printing-pins #printPinsArea table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    body.printing-pins #printPinsArea th, body.printing-pins #printPinsArea td {
+      border: 1px solid #333; padding: 6px 8px; text-align: left; white-space: normal;
+    }
+  }
 </style>
 <script src="data-sync.js"></script>
 </head>
@@ -244,7 +257,6 @@
               <option value="pending">Pending only</option>
             </select>
           </label>
-          <button type="button" class="actionBtn" onclick="openMemberAdd()">Add member</button>
           <button type="button" class="actionBtn secondary" onclick="printMembersList()">Print</button>
           <button type="button" class="actionBtn" onclick="downloadMembersPdf()">Download PDF</button>
         </div>
@@ -270,37 +282,50 @@
         <textarea id="manageNames" rows="7" placeholder="Rabiu Dankadiri&#10;Umar Haruna, 08036654156" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px;font-family:inherit;"></textarea>
         <div class="form-actions" style="margin-top:10px;">
           <button type="button" class="actionBtn" id="manageCreateBtn" onclick="manageCreateMembers()">Register and generate PINs</button>
+          <button type="button" class="actionBtn secondary" onclick="openMemberAdd()">Add one member with full details</button>
         </div>
         <div id="manageCreateMsg" style="font-size:13px;margin-top:10px;"></div>
-        <div id="manageResults" style="display:none;margin-top:14px;">
-          <p class="hint" style="color:#b00020;font-weight:600;">PINs are shown only on this screen. Copy or download them before you leave this page.</p>
-          <div class="toolbar">
-            <span id="manageResultCount"></span>
-            <div class="toolbar-right">
-              <button type="button" class="actionBtn secondary" onclick="manageCopyResults()">Copy list</button>
-              <button type="button" class="actionBtn" onclick="manageDownloadResults()">Download CSV</button>
-            </div>
-          </div>
-          <div class="tableScroll">
-            <table>
-              <thead><tr><th>Name</th><th>Surname to log in</th><th>PIN</th><th>Result</th></tr></thead>
-              <tbody id="manageResultsBody"></tbody>
-            </table>
-          </div>
-        </div>
+        <div id="manageIssues" style="font-size:13px;color:#856404;margin-top:8px;"></div>
       </div>
 
       <div class="panel">
         <h2>Generate a PIN</h2>
-        <p class="hint">Use this for existing members who have no PIN yet, and for members who lost theirs. A new PIN replaces the old one straight away.</p>
+        <p class="hint">An existing PIN cannot be looked up, because only a scrambled copy is stored. Instead, generate a new one: tick the members who need a PIN (or select everyone without one) and generate. A new PIN replaces the old one straight away and is added to the PIN list at the bottom of this page.</p>
         <div class="toolbar">
           <input type="search" id="manageSearch" placeholder="Search name or phone" oninput="renderManageList()" style="flex:1;min-width:180px;">
           <span id="manageListCount"></span>
         </div>
+        <div class="bulk-bar">
+          <button type="button" class="actionBtn secondary" onclick="manageSelectNoPin()">Select members without a PIN</button>
+          <button type="button" class="actionBtn secondary" onclick="manageClearSelection()">Clear selection</button>
+          <button type="button" class="actionBtn" id="manageBulkPinBtn" onclick="manageGenerateSelected()">Generate PINs for selected (0)</button>
+        </div>
+        <div id="manageBulkMsg" style="font-size:13px;margin-bottom:10px;"></div>
         <div class="tableScroll">
           <table>
-            <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>PIN</th></tr></thead>
+            <thead><tr><th><input type="checkbox" id="manageSelAll" onchange="manageSelectShown(this.checked)" aria-label="Select all shown"></th><th>Name</th><th>Phone</th><th>Status</th><th>Has login</th><th>PIN</th></tr></thead>
             <tbody id="manageListBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" id="managePinPanel" style="display:none;">
+        <h2>PIN list</h2>
+        <p class="hint" style="color:#b00020;font-weight:600;">PINs are shown only here and are not saved. Download or print this list before you leave or refresh the page.</p>
+        <div class="toolbar">
+          <span id="pinListCount"></span>
+          <div class="toolbar-right">
+            <button type="button" class="actionBtn secondary" onclick="pinCopyList()">Copy</button>
+            <button type="button" class="actionBtn secondary" onclick="pinPrintList()">Print</button>
+            <button type="button" class="actionBtn secondary" onclick="pinDownloadCsv()">Download CSV</button>
+            <button type="button" class="actionBtn" onclick="pinDownloadPdf()">Download PDF</button>
+            <button type="button" class="actionBtn danger" onclick="pinClearList()">Clear</button>
+          </div>
+        </div>
+        <div class="tableScroll">
+          <table>
+            <thead><tr><th>#</th><th>Full name</th><th>Surname to log in</th><th>PIN</th></tr></thead>
+            <tbody id="pinListBody"></tbody>
           </table>
         </div>
       </div>
@@ -837,6 +862,16 @@
   </div>
 </div>
 
+<div id="printPinsArea" aria-hidden="true">
+  <h1>Adagbor Descendant Association — Member login PINs</h1>
+  <div class="meta" id="printPinsMeta"></div>
+  <table>
+    <thead><tr><th>#</th><th>Full name</th><th>Surname to log in</th><th>PIN</th></tr></thead>
+    <tbody id="printPinsBody"></tbody>
+  </table>
+  <p style="margin-top:14px;font-size:12px;">Log in with your surname and PIN. Keep your PIN private.</p>
+</div>
+
 <div id="printArea" aria-hidden="true">
   <h1>Adagbor Descendant Association — Members directory</h1>
   <div class="meta" id="printMeta"></div>
@@ -1098,7 +1133,6 @@ function renderMembersList() {
       <td><span class="status ${m.status || ""}">${escapeHtml(m.status || "")}</span></td>
       <td>
         <button type="button" class="actionBtn secondary" onclick="openMemberEdit(${m.id})">Edit</button>
-        <button type="button" class="actionBtn secondary" onclick="generateMemberPassword(${m.id})">New password</button>
         <button type="button" class="actionBtn danger" onclick="deleteMember(${m.id})">Delete</button>
       </td>`;
     body.appendChild(tr);
@@ -1268,6 +1302,7 @@ async function saveMemberAdd() {
     msg.textContent = "Added.";
     await loadMembers();
     closeMemberAdd();
+    addToPinList({ id: data.id != null ? Number(data.id) : null, name: fullName, surname: surnameOf(fullName), phone, code: data.password });
     showPasswordReveal(`Password for ${fullName}`, data.password, "Share this with them directly — it will not be shown again. They can log in with their surname (or phone/email) and this PIN.");
   } catch (err) {
     msg.className = "err";
@@ -1276,50 +1311,136 @@ async function saveMemberAdd() {
 }
 
 // ---------- Manage account: register members + generate PINs ----------
-let manageResults = [];
+// pinList holds PINs created or regenerated in this browser session only.
+// PINs are stored hashed on the server, so this is the only time they can be seen.
+let pinList = [];
 
-function manageCsvCell(v) {
+function surnameOf(name) {
+  const parts = String(name || "").trim().split(/\s+/);
+  return parts[parts.length - 1] || "";
+}
+
+function addToPinList(entry) {
+  if (entry.id != null) pinList = pinList.filter(e => e.id !== entry.id);
+  pinList.push(entry);
+  renderPinList();
+}
+
+function renderPinList() {
+  const panel = document.getElementById("managePinPanel");
+  if (!panel) return;
+  panel.style.display = pinList.length ? "block" : "none";
+  document.getElementById("pinListCount").textContent = `${pinList.length} PIN(s)`;
+  document.getElementById("pinListBody").innerHTML = pinList.map((e, i) => `
+    <tr>
+      <td>${i + 1}</td>
+      <td>${escapeHtml(e.name)}</td>
+      <td>${escapeHtml(e.surname)}</td>
+      <td style="font-weight:700;letter-spacing:2px;">${escapeHtml(e.code)}</td>
+    </tr>`).join("");
+}
+
+function pinClearList() {
+  if (!pinList.length) return;
+  if (!confirm("Clear the PIN list? These PINs cannot be shown again.")) return;
+  pinList = [];
+  renderPinList();
+}
+
+function pinCsvCell(v) {
   return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
 }
 
-function renderManageResults() {
-  const box = document.getElementById("manageResults");
-  const body = document.getElementById("manageResultsBody");
-  if (!manageResults.length) { box.style.display = "none"; body.innerHTML = ""; return; }
-  box.style.display = "block";
-  const created = manageResults.filter(r => r.status === "created").length;
-  document.getElementById("manageResultCount").textContent =
-    `${created} created, ${manageResults.length - created} not created`;
-  const cls = { created: "approved", skipped: "pending", error: "rejected" };
-  body.innerHTML = manageResults.map(r => `
-    <tr>
-      <td>${escapeHtml(r.name)}</td>
-      <td>${escapeHtml(r.surname || "")}</td>
-      <td style="font-weight:700;letter-spacing:2px;">${escapeHtml(r.code || "")}</td>
-      <td><span class="status ${cls[r.status] || "pending"}">${escapeHtml(r.status === "created" ? "Created" : (r.reason || r.status))}</span></td>
-    </tr>`).join("");
+function pinDownloadCsv() {
+  if (!pinList.length) return;
+  const csv = ["Name,Surname,Phone,PIN"]
+    .concat(pinList.map(e => [e.name, e.surname, e.phone, e.code].map(pinCsvCell).join(",")))
+    .join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `adagbor-pins-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function pinDownloadPdf() {
+  if (!pinList.length) return;
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    alert("PDF library failed to load. Use Print or Download CSV instead.");
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  doc.setFontSize(14);
+  doc.setTextColor(30, 77, 43);
+  doc.text("Adagbor Descendant Association — Member login PINs", 40, 36);
+  doc.setFontSize(9);
+  doc.setTextColor(80);
+  doc.text(`${pinList.length} member(s)  |  ${new Date().toLocaleString()}`, 40, 52);
+  doc.autoTable({
+    startY: 68,
+    head: [["#", "Full name", "Surname to log in", "PIN"]],
+    body: pinList.map((e, i) => [String(i + 1), e.name, e.surname, e.code]),
+    styles: { fontSize: 11, cellPadding: 6 },
+    headStyles: { fillColor: [30, 77, 43], textColor: 255 },
+    columnStyles: { 3: { fontStyle: "bold" } },
+    margin: { left: 40, right: 40 }
+  });
+  doc.setFontSize(9);
+  doc.text("Log in with your surname and PIN. Keep your PIN private.", 40, doc.lastAutoTable.finalY + 20);
+  doc.save(`adagbor-pins-${new Date().toISOString().slice(0, 10)}.pdf`);
+}
+
+function pinPrintList() {
+  if (!pinList.length) return;
+  document.getElementById("printPinsMeta").textContent =
+    `${pinList.length} member(s) | ${new Date().toLocaleString()} | Confidential: give each member only their own PIN`;
+  document.getElementById("printPinsBody").innerHTML = pinList.map((e, i) => `
+    <tr><td>${i + 1}</td><td>${escapeHtml(e.name)}</td><td>${escapeHtml(e.surname)}</td>
+    <td style="font-weight:700;letter-spacing:2px;">${escapeHtml(e.code)}</td></tr>`).join("");
+  document.body.classList.add("printing-pins");
+  const cleanup = () => document.body.classList.remove("printing-pins");
+  window.addEventListener("afterprint", cleanup, { once: true });
+  setTimeout(cleanup, 60000);
+  window.print();
+}
+
+function pinCopyList() {
+  if (!pinList.length) return;
+  const text = pinList.map(e => `${e.name}\tSurname: ${e.surname}\tPIN: ${e.code}`).join("\n");
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      () => alert("PIN list copied."),
+      () => alert("Could not copy. Use Download CSV instead.")
+    );
+  } else {
+    alert("Copy is not available here. Use Download CSV instead.");
+  }
 }
 
 async function manageCreateMembers() {
   const ta = document.getElementById("manageNames");
   const btn = document.getElementById("manageCreateBtn");
   const msg = document.getElementById("manageCreateMsg");
+  const issuesEl = document.getElementById("manageIssues");
   const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   msg.style.color = "";
+  issuesEl.textContent = "";
   if (!lines.length) {
     msg.style.color = "#b00020";
     msg.textContent = "Enter at least one name.";
     return;
   }
-  if (manageResults.some(r => r.status === "created") &&
-      !confirm("The PIN list on screen will be replaced. Have you copied or downloaded it?")) return;
 
-  manageResults = [];
-  renderManageResults();
   btn.disabled = true;
   const CHUNK = 25;
   let done = 0;
+  let created = 0;
   let failed = "";
+  const issues = [];
 
   for (let i = 0; i < lines.length; i += CHUNK) {
     const chunk = lines.slice(i, i + CHUNK);
@@ -1337,8 +1458,18 @@ async function manageCreateMembers() {
           (res.status === 404 ? "The Worker needs updating (upload the new Adagbor.js) before bulk registration works." : "Request failed.");
         break;
       }
-      manageResults = manageResults.concat(data.results || []);
-      renderManageResults();
+      (data.results || []).forEach(r => {
+        if (r.status === "created") {
+          created++;
+          addToPinList({
+            id: r.id != null ? Number(r.id) : null,
+            name: r.name, surname: r.surname || surnameOf(r.name),
+            phone: r.phone || "", code: r.code
+          });
+        } else {
+          issues.push(`${r.name}: ${r.reason || r.status}`);
+        }
+      });
       done += chunk.length;
     } catch (err) {
       failed = "Could not reach the server. Check your connection.";
@@ -1349,67 +1480,141 @@ async function manageCreateMembers() {
   btn.disabled = false;
   ta.value = lines.slice(done).join("\n");
   await loadMembers();
+  if (issues.length) issuesEl.textContent = "Not registered: " + issues.join("; ");
   if (failed) {
     msg.style.color = "#b00020";
     msg.textContent = `${failed} ${done} of ${lines.length} names were processed. The rest are still in the box.`;
   } else {
-    msg.style.color = "#155724";
-    msg.textContent = "Done. Copy or download the PIN list below.";
+    msg.style.color = created ? "#155724" : "#856404";
+    msg.textContent = created
+      ? `${created} member(s) registered. Their PINs are in the PIN list below.`
+      : "No new members were registered.";
+  }
+  if (created) {
+    const panel = document.getElementById("managePinPanel");
+    if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 }
 
-function manageResultsText() {
-  return manageResults.filter(r => r.status === "created")
-    .map(r => `${r.name}\tSurname: ${r.surname}\tPIN: ${r.code}`).join("\n");
+let manageSelected = new Set();
+
+function manageUpdateBulkBtn() {
+  const btn = document.getElementById("manageBulkPinBtn");
+  if (btn) btn.textContent = `Generate PINs for selected (${manageSelected.size})`;
 }
 
-function manageCopyResults() {
-  const text = manageResultsText();
-  if (!text) return;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(
-      () => alert("PIN list copied."),
-      () => alert("Could not copy. Use Download CSV instead.")
-    );
-  } else {
-    alert("Copy is not available here. Use Download CSV instead.");
+function manageToggle(id, on) {
+  if (on) manageSelected.add(Number(id)); else manageSelected.delete(Number(id));
+  manageUpdateBulkBtn();
+}
+
+function manageShownMembers() {
+  const q = (document.getElementById("manageSearch").value || "").trim().toLowerCase();
+  const list = (allMembers || []).filter(m =>
+    !q || String(m.full_name || "").toLowerCase().includes(q) || String(m.phone || "").includes(q));
+  return list.slice().sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || "")));
+}
+
+function manageSelectShown(on) {
+  manageShownMembers().slice(0, 50).forEach(m => {
+    if (on) manageSelected.add(Number(m.id)); else manageSelected.delete(Number(m.id));
+  });
+  renderManageList();
+}
+
+function manageSelectNoPin() {
+  if (!(allMembers || []).some(m => m.has_pin !== undefined)) {
+    alert("PIN status is not available yet. Upload the new Adagbor.js to the Worker, then refresh this page.");
+    return;
   }
+  manageSelected = new Set(
+    allMembers.filter(m => !m.has_pin && m.status !== "rejected").map(m => Number(m.id))
+  );
+  renderManageList();
 }
 
-function manageDownloadResults() {
-  const rows = manageResults.filter(r => r.status === "created");
-  if (!rows.length) return;
-  const csv = ["Name,Surname,Phone,PIN"]
-    .concat(rows.map(r => [r.name, r.surname, r.phone, r.code].map(manageCsvCell).join(",")))
-    .join("\r\n");
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `adagbor-pins-${new Date().toISOString().slice(0, 10)}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+function manageClearSelection() {
+  manageSelected = new Set();
+  renderManageList();
 }
 
 function renderManageList() {
   const body = document.getElementById("manageListBody");
   if (!body) return;
-  const q = (document.getElementById("manageSearch").value || "").trim().toLowerCase();
-  let list = (allMembers || []).filter(m =>
-    !q || String(m.full_name || "").toLowerCase().includes(q) || String(m.phone || "").includes(q));
-  list = list.slice().sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || "")));
-  const total = list.length;
-  list = list.slice(0, 50);
+  const all = manageShownMembers();
+  const total = all.length;
+  const list = all.slice(0, 50);
   document.getElementById("manageListCount").textContent =
     total > 50 ? `${total} members, showing 50. Search to narrow.` : `${total} member(s)`;
-  body.innerHTML = list.map(m => `
+  body.innerHTML = list.map(m => {
+    const login = m.has_pin === undefined ? "—" : (m.has_pin ? "Set" : "None");
+    const loginCls = m.has_pin === undefined ? "" : (m.has_pin ? "approved" : "pending");
+    return `
     <tr>
+      <td><input type="checkbox" ${manageSelected.has(Number(m.id)) ? "checked" : ""} onchange="manageToggle(${Number(m.id)}, this.checked)" aria-label="Select ${escapeHtml(m.full_name || "")}"></td>
       <td>${escapeHtml(m.full_name || "")}</td>
       <td>${escapeHtml(m.phone || "")}</td>
       <td><span class="status ${escapeHtml(m.status || "pending")}">${escapeHtml(m.status || "pending")}</span></td>
+      <td><span class="status ${loginCls}">${login}</span></td>
       <td><button type="button" class="actionBtn secondary" onclick="manageGeneratePin(${Number(m.id)})">New PIN</button></td>
-    </tr>`).join("") || `<tr><td colspan="4" style="color:#666;">No members found.</td></tr>`;
+    </tr>`;
+  }).join("") || `<tr><td colspan="6" style="color:#666;">No members found.</td></tr>`;
+  const allBox = document.getElementById("manageSelAll");
+  if (allBox) allBox.checked = list.length > 0 && list.every(m => manageSelected.has(Number(m.id)));
+  manageUpdateBulkBtn();
+}
+
+async function manageGenerateSelected() {
+  const msg = document.getElementById("manageBulkMsg");
+  const btn = document.getElementById("manageBulkPinBtn");
+  const ids = [...manageSelected].filter(id => allMembers.some(m => m.id === id));
+  msg.style.color = "";
+  if (!ids.length) {
+    msg.style.color = "#b00020";
+    msg.textContent = "Select at least one member.";
+    return;
+  }
+  const hasPin = ids.filter(id => allMembers.find(m => m.id === id).has_pin).length;
+  const warn = hasPin ? ` ${hasPin} of them already have a PIN or password, which will stop working.` : "";
+  if (!confirm(`Generate new PINs for ${ids.length} member(s)?${warn}`)) return;
+
+  btn.disabled = true;
+  let ok = 0;
+  const failed = [];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const m = allMembers.find(x => x.id === id);
+    btn.textContent = `Generating ${i + 1} of ${ids.length}…`;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/members/${id}/generate-password`, {
+        method: "POST",
+        headers: { "X-Admin-Key": adminKey }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.password) throw new Error(data.error || "failed");
+      addToPinList({
+        id: Number(id), name: m.full_name || "", surname: surnameOf(m.full_name),
+        phone: m.phone || "", code: data.password
+      });
+      manageSelected.delete(Number(id));
+      ok++;
+    } catch (err) {
+      failed.push(m.full_name || String(id));
+    }
+  }
+  btn.disabled = false;
+  await loadMembers();
+  if (failed.length) {
+    msg.style.color = "#b00020";
+    msg.textContent = `${ok} PIN(s) generated. Failed for: ${failed.join(", ")}. They are still selected, so you can try again.`;
+  } else {
+    msg.style.color = "#155724";
+    msg.textContent = `${ok} PIN(s) generated. See the PIN list below.`;
+  }
+  if (ok) {
+    const panel = document.getElementById("managePinPanel");
+    if (panel && panel.scrollIntoView) panel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 }
 
 async function manageGeneratePin(id) {
@@ -1423,7 +1628,11 @@ async function manageGeneratePin(id) {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "Could not generate a PIN.");
-    let hint = "Give this to the member directly. They log in with their surname and this PIN. It will not be shown again.";
+    addToPinList({
+      id: Number(id), name: label, surname: surnameOf(label),
+      phone: (m && m.phone) || "", code: data.password
+    });
+    let hint = "Give this to the member directly. They log in with their surname and this PIN. It is also in the PIN list at the bottom of this page.";
     if (m && m.status === "pending") hint += " They cannot log in until you approve their application.";
     showPasswordReveal(`New PIN for ${label}`, data.password, hint);
   } catch (err) {
