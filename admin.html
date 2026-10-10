@@ -166,6 +166,10 @@
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="2.6"/><path d="M4 20c0-3 2.2-5 5-5s5 2 5 5"/><circle cx="17" cy="9" r="2.1"/><path d="M15.5 13.2c2.2.3 3.8 2 3.8 4.3"/></svg>
         <span>Members directory</span>
       </button>
+      <button type="button" class="tab" data-tab="manage" onclick="switchTab('manage')">
+        <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8.5" cy="12" r="3.5"/><path d="M12 12h8.5"/><path d="M17 12v3M20.5 12v2"/></svg>
+        <span>Manage account</span>
+      </button>
       <button type="button" class="tab" data-tab="contributions" onclick="switchTab('contributions')">
         <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><circle cx="16.5" cy="14" r="1.1" fill="currentColor" stroke="none"/></svg>
         <span>Contributions</span>
@@ -256,6 +260,50 @@
         </table>
       </div>
       <p style="margin-top:12px;color:#666;font-size:13px;">Admin only: Download PDF or Print. Members see a read-only directory on their dashboard.</p>
+    </div>
+
+    <!-- Manage account -->
+    <div id="tab-manage" class="tab-panel">
+      <div class="panel">
+        <h2>Register members</h2>
+        <p class="hint">Type or paste one name per line. You can add a phone number after a comma, for example <b>Rabiu Dankadiri, 08012345678</b>. Each new member is approved straight away and gets a 6-digit PIN. Members log in with their surname and PIN.</p>
+        <textarea id="manageNames" rows="7" placeholder="Rabiu Dankadiri&#10;Umar Haruna, 08036654156" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px;font-family:inherit;"></textarea>
+        <div class="form-actions" style="margin-top:10px;">
+          <button type="button" class="actionBtn" id="manageCreateBtn" onclick="manageCreateMembers()">Register and generate PINs</button>
+        </div>
+        <div id="manageCreateMsg" style="font-size:13px;margin-top:10px;"></div>
+        <div id="manageResults" style="display:none;margin-top:14px;">
+          <p class="hint" style="color:#b00020;font-weight:600;">PINs are shown only on this screen. Copy or download them before you leave this page.</p>
+          <div class="toolbar">
+            <span id="manageResultCount"></span>
+            <div class="toolbar-right">
+              <button type="button" class="actionBtn secondary" onclick="manageCopyResults()">Copy list</button>
+              <button type="button" class="actionBtn" onclick="manageDownloadResults()">Download CSV</button>
+            </div>
+          </div>
+          <div class="tableScroll">
+            <table>
+              <thead><tr><th>Name</th><th>Surname to log in</th><th>PIN</th><th>Result</th></tr></thead>
+              <tbody id="manageResultsBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>Generate a PIN</h2>
+        <p class="hint">Use this for existing members who have no PIN yet, and for members who lost theirs. A new PIN replaces the old one straight away.</p>
+        <div class="toolbar">
+          <input type="search" id="manageSearch" placeholder="Search name or phone" oninput="renderManageList()" style="flex:1;min-width:180px;">
+          <span id="manageListCount"></span>
+        </div>
+        <div class="tableScroll">
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>PIN</th></tr></thead>
+            <tbody id="manageListBody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- Contributions -->
@@ -923,6 +971,7 @@ function switchTab(name) {
   document.querySelectorAll(".tab-panel").forEach(p => p.classList.toggle("active", p.id === "tab-" + name));
   if (name === "executives") renderExecutives();
   if (name === "list") renderMembersList();
+  if (name === "manage") renderManageList();
   if (name === "contributions") initContributionsTab();
   if (name === "attendance") initAttendanceTab();
   if (name === "resolutions") renderResolutionsAdmin();
@@ -964,6 +1013,7 @@ async function loadMembers() {
     allMembers = data.members || [];
     renderMembers(allMembers);
     renderMembersList();
+    renderManageList();
     return true;
   } catch (err) {
     errorEl.textContent = "Could not load members. Check your connection and try again.";
@@ -1218,10 +1268,166 @@ async function saveMemberAdd() {
     msg.textContent = "Added.";
     await loadMembers();
     closeMemberAdd();
-    showPasswordReveal(`Password for ${fullName}`, data.password, "Share this with them directly — it will not be shown again. They can log in with their phone/email and this password.");
+    showPasswordReveal(`Password for ${fullName}`, data.password, "Share this with them directly — it will not be shown again. They can log in with their surname (or phone/email) and this PIN.");
   } catch (err) {
     msg.className = "err";
     msg.textContent = err.message || "Could not add member.";
+  }
+}
+
+// ---------- Manage account: register members + generate PINs ----------
+let manageResults = [];
+
+function manageCsvCell(v) {
+  return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+}
+
+function renderManageResults() {
+  const box = document.getElementById("manageResults");
+  const body = document.getElementById("manageResultsBody");
+  if (!manageResults.length) { box.style.display = "none"; body.innerHTML = ""; return; }
+  box.style.display = "block";
+  const created = manageResults.filter(r => r.status === "created").length;
+  document.getElementById("manageResultCount").textContent =
+    `${created} created, ${manageResults.length - created} not created`;
+  const cls = { created: "approved", skipped: "pending", error: "rejected" };
+  body.innerHTML = manageResults.map(r => `
+    <tr>
+      <td>${escapeHtml(r.name)}</td>
+      <td>${escapeHtml(r.surname || "")}</td>
+      <td style="font-weight:700;letter-spacing:2px;">${escapeHtml(r.code || "")}</td>
+      <td><span class="status ${cls[r.status] || "pending"}">${escapeHtml(r.status === "created" ? "Created" : (r.reason || r.status))}</span></td>
+    </tr>`).join("");
+}
+
+async function manageCreateMembers() {
+  const ta = document.getElementById("manageNames");
+  const btn = document.getElementById("manageCreateBtn");
+  const msg = document.getElementById("manageCreateMsg");
+  const lines = ta.value.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  msg.style.color = "";
+  if (!lines.length) {
+    msg.style.color = "#b00020";
+    msg.textContent = "Enter at least one name.";
+    return;
+  }
+  if (manageResults.some(r => r.status === "created") &&
+      !confirm("The PIN list on screen will be replaced. Have you copied or downloaded it?")) return;
+
+  manageResults = [];
+  renderManageResults();
+  btn.disabled = true;
+  const CHUNK = 25;
+  let done = 0;
+  let failed = "";
+
+  for (let i = 0; i < lines.length; i += CHUNK) {
+    const chunk = lines.slice(i, i + CHUNK);
+    msg.textContent = `Registering ${Math.min(i + CHUNK, lines.length)} of ${lines.length}…`;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/members/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Admin-Key": adminKey },
+        body: JSON.stringify({ names: chunk })
+      });
+      let data = null;
+      try { data = await res.json(); } catch (e) {}
+      if (!res.ok || !data) {
+        failed = (data && data.error) ||
+          (res.status === 404 ? "The Worker needs updating (upload the new Adagbor.js) before bulk registration works." : "Request failed.");
+        break;
+      }
+      manageResults = manageResults.concat(data.results || []);
+      renderManageResults();
+      done += chunk.length;
+    } catch (err) {
+      failed = "Could not reach the server. Check your connection.";
+      break;
+    }
+  }
+
+  btn.disabled = false;
+  ta.value = lines.slice(done).join("\n");
+  await loadMembers();
+  if (failed) {
+    msg.style.color = "#b00020";
+    msg.textContent = `${failed} ${done} of ${lines.length} names were processed. The rest are still in the box.`;
+  } else {
+    msg.style.color = "#155724";
+    msg.textContent = "Done. Copy or download the PIN list below.";
+  }
+}
+
+function manageResultsText() {
+  return manageResults.filter(r => r.status === "created")
+    .map(r => `${r.name}\tSurname: ${r.surname}\tPIN: ${r.code}`).join("\n");
+}
+
+function manageCopyResults() {
+  const text = manageResultsText();
+  if (!text) return;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(
+      () => alert("PIN list copied."),
+      () => alert("Could not copy. Use Download CSV instead.")
+    );
+  } else {
+    alert("Copy is not available here. Use Download CSV instead.");
+  }
+}
+
+function manageDownloadResults() {
+  const rows = manageResults.filter(r => r.status === "created");
+  if (!rows.length) return;
+  const csv = ["Name,Surname,Phone,PIN"]
+    .concat(rows.map(r => [r.name, r.surname, r.phone, r.code].map(manageCsvCell).join(",")))
+    .join("\r\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `adagbor-pins-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function renderManageList() {
+  const body = document.getElementById("manageListBody");
+  if (!body) return;
+  const q = (document.getElementById("manageSearch").value || "").trim().toLowerCase();
+  let list = (allMembers || []).filter(m =>
+    !q || String(m.full_name || "").toLowerCase().includes(q) || String(m.phone || "").includes(q));
+  list = list.slice().sort((a, b) => String(a.full_name || "").localeCompare(String(b.full_name || "")));
+  const total = list.length;
+  list = list.slice(0, 50);
+  document.getElementById("manageListCount").textContent =
+    total > 50 ? `${total} members, showing 50. Search to narrow.` : `${total} member(s)`;
+  body.innerHTML = list.map(m => `
+    <tr>
+      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.phone || "")}</td>
+      <td><span class="status ${escapeHtml(m.status || "pending")}">${escapeHtml(m.status || "pending")}</span></td>
+      <td><button type="button" class="actionBtn secondary" onclick="manageGeneratePin(${Number(m.id)})">New PIN</button></td>
+    </tr>`).join("") || `<tr><td colspan="4" style="color:#666;">No members found.</td></tr>`;
+}
+
+async function manageGeneratePin(id) {
+  const m = allMembers.find(x => x.id === id);
+  const label = m ? (m.full_name || "this member") : "this member";
+  if (!confirm(`Generate a new PIN for ${label}? Their current PIN or password will stop working.`)) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/admin/members/${id}/generate-password`, {
+      method: "POST",
+      headers: { "X-Admin-Key": adminKey }
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Could not generate a PIN.");
+    let hint = "Give this to the member directly. They log in with their surname and this PIN. It will not be shown again.";
+    if (m && m.status === "pending") hint += " They cannot log in until you approve their application.";
+    showPasswordReveal(`New PIN for ${label}`, data.password, hint);
+  } catch (err) {
+    alert(err.message || "Could not generate a PIN.");
   }
 }
 
