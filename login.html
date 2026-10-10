@@ -50,15 +50,15 @@
     <h1>Login</h1>
     <p class="sub">Ancestral home: Ugbedu, Kogi State</p>
     <form id="loginForm">
-      <label for="identifier">Email or phone number</label>
-      <input type="text" id="identifier" autocomplete="username" placeholder="Members: email or phone">
-      <label for="password">Password</label>
-      <input type="password" id="password" required autocomplete="current-password" placeholder="Password or admin key">
+      <label for="identifier">Surname</label>
+      <input type="text" id="identifier" autocomplete="username" placeholder="Members: your surname">
+      <label for="password">PIN</label>
+      <input type="password" id="password" required autocomplete="current-password" placeholder="Your PIN (committee: admin key)">
       <button type="submit">Log in</button>
     </form>
     <p style="margin-top:16px;font-size:0.9rem;text-align:center"><a href="forgot-password.html" style="color:#5a4a1f">Forgot password?</a></p>
     <div id="message"></div>
-    <p class="hint">Members use email/phone and password.<br>Committee: enter the admin key as the password.</p>
+    <p class="hint">Members: enter your surname and the PIN given to you by the association.<br>Email or phone with a password also works.<br>Committee: leave the surname empty and enter the admin key as the PIN.</p>
   </div>
 <script>
 const API_BASE = "https://adagbor-api.umahglobal1000.workers.dev";
@@ -73,7 +73,7 @@ async function tryMemberLogin(identifier, password) {
   });
   const data = await res.json().catch(() => ({}));
   if (res.ok) return { ok: true, data };
-  return { ok: false, error: data.error || "Login failed." };
+  return { ok: false, status: res.status, error: data.error || "Login failed." };
 }
 
 async function tryAdminLogin(key) {
@@ -92,9 +92,11 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
   const msg = document.getElementById("message");
   msg.textContent = "Logging in...";
   msg.className = "";
+  let memberResult = null;
   try {
     if (identifier) {
       const member = await tryMemberLogin(identifier, password);
+      memberResult = member;
       if (member && member.ok) {
         msg.textContent = "Success! Opening your membership…";
         msg.className = "success";
@@ -110,9 +112,15 @@ document.getElementById("loginForm").addEventListener("submit", async (e) => {
       window.location.href = "admin.html";
       return;
     }
-    msg.textContent = identifier
-      ? "Invalid credentials. Check your email/phone and password, or use the admin key if you are on the committee."
-      : "Invalid admin key.";
+    if (memberResult && memberResult.status === 429) {
+      msg.textContent = memberResult.error;
+    } else if (memberResult && (memberResult.status === 403) && memberResult.error) {
+      msg.textContent = memberResult.error;
+    } else {
+      msg.textContent = identifier
+        ? "Invalid surname or PIN. Check them and try again, or use the admin key if you are on the committee."
+        : "Invalid admin key.";
+    }
     msg.className = "error";
   } catch (err) {
     msg.textContent = "Network error. Please try again.";
