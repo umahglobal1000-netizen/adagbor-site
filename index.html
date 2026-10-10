@@ -154,9 +154,9 @@
     </button>
     <nav id="siteNav">
       <a href="#home" data-nav>Home</a>
+      <a href="#contributions" data-nav>Contributions</a>
       <a href="#about" data-nav>About</a>
       <a href="#events" data-nav>Events</a>
-      <a href="#contributions" data-nav>Contributions</a>
       <a href="#gallery" data-nav>Gallery</a>
       <a href="membership.html">Membership</a>
       <a href="#contact" data-nav>Contact</a>
@@ -164,6 +164,23 @@
     </nav>
   </div>
 </header>
+
+<!-- CONTRIBUTIONS -->
+<section class="section" id="contributions">
+  <div class="wrap">
+    <div class="hero-entry"><span class="dot"></span> Contributions</div>
+    <h2>What the family has contributed</h2>
+    <p class="sub">Choose a type of contribution to see the total received. Only totals are shown here.</p>
+    <div class="contrib-box">
+      <label for="contribSelect">Type of contribution</label>
+      <select id="contribSelect" disabled><option>Loading…</option></select>
+      <div class="contrib-total" id="contribTotal">₦0</div>
+      <div class="contrib-note" id="contribNote"></div>
+      <div class="contrib-break" id="contribBreak"></div>
+      <div id="contribError">Totals are not available right now. Please try again later.</div>
+    </div>
+  </div>
+</section>
 
 <!-- Announcements: horizontal strip at the very top -->
 <section class="ann-strip" id="announcements">
@@ -239,23 +256,6 @@
     <p class="sub">From annual conventions to branch meetings — the moments we come together.</p>
     <div id="publicEventsEmpty" style="color:var(--ink-soft);font-size:14px;display:none;">No events published yet.</div>
     <div class="card-grid" id="publicEventsList"></div>
-  </div>
-</section>
-
-<!-- CONTRIBUTIONS -->
-<section class="section" id="contributions">
-  <div class="wrap">
-    <div class="hero-entry"><span class="dot"></span> Contributions</div>
-    <h2>What the family has contributed</h2>
-    <p class="sub">Choose a type of contribution to see the total received. Only totals are shown here.</p>
-    <div class="contrib-box">
-      <label for="contribSelect">Type of contribution</label>
-      <select id="contribSelect" disabled><option>Loading…</option></select>
-      <div class="contrib-total" id="contribTotal">₦0</div>
-      <div class="contrib-note" id="contribNote"></div>
-      <div class="contrib-break" id="contribBreak"></div>
-      <div id="contribError">Totals are not available right now. Please try again later.</div>
-    </div>
   </div>
 </section>
 
