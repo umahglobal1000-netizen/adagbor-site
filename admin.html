@@ -401,6 +401,11 @@
           </label>
           <button type="button" class="actionBtn danger" id="sheetRemoveType" style="display:none;" onclick="removeContribType()">Remove this type</button>
         </div>
+        <div class="toolbar" id="guestAddRow" style="display:none;">
+          <input type="text" id="guestName" placeholder="Add a name that is not a registered member" style="flex:1;min-width:180px;" onkeydown="if(event.key==='Enter'){addGuestContributor();}">
+          <button type="button" class="actionBtn secondary" onclick="addGuestContributor()">Add name</button>
+        </div>
+        <p class="hint" id="guestHint" style="display:none;">Names added here appear only on lists for contributions you created (not Registration or Monthly fee). They are not added to the members register and cannot log in.</p>
         <div class="toolbar">
           <input type="search" id="sheetSearch" placeholder="Search member" oninput="renderContribSheet()" style="flex:1;min-width:160px;">
           <div class="toolbar-right">
@@ -2101,6 +2106,7 @@ function deletePayment(id) {
 
 function initContributionsTab() {
   syncPaymentsFromServer();
+  syncGuestsFromServer();
   fillPayTypeOptions();
   fillPayMemberSelect();
   fillBeneficiarySelect();
@@ -2229,6 +2235,79 @@ function removeContribType() {
   sheetMsgSet(`Removed “${t.name}”.`, true);
 }
 
+/* ---- Guest contributors: names on contribution lists who are not registered members ---- */
+
+const GUESTS_KEY = "adagbor_guest_contributors";
+
+function getGuests() {
+  try {
+    const raw = localStorage.getItem(GUESTS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function setGuests(list) {
+  localStorage.setItem(GUESTS_KEY, JSON.stringify(list));
+  if (window.AdagborStore) AdagborStore.save("guest_contributors", list, adminKey);
+}
+
+async function syncGuestsFromServer() {
+  const remote = await adminStoreLoad("guest_contributors", null);
+  if (!Array.isArray(remote)) return;
+  const local = getGuests();
+  const have = new Set(local.map(g => g && g.id));
+  const extra = remote.filter(g => g && g.id && !have.has(g.id));
+  if (!extra.length) return;
+  localStorage.setItem(GUESTS_KEY, JSON.stringify(local.concat(extra)));
+  if (document.getElementById("sheetBody")) renderContribSheet();
+}
+
+// Registered approved members, plus guest names when the type is one you created.
+function sheetPeople(type) {
+  const guests = type && type.kind === "custom"
+    ? getGuests().map(g => ({ id: g.id, full_name: g.name, phone: "", status: "approved", isGuest: true }))
+    : [];
+  return approvedAlphabetical().concat(guests).sort((a, b) =>
+    String(a.full_name || "").localeCompare(String(b.full_name || ""), undefined, { sensitivity: "base" }));
+}
+
+function addGuestContributor() {
+  const input = document.getElementById("guestName");
+  const name = input.value.trim().replace(/\s+/g, " ");
+  if (name.length < 2) { sheetMsgSet("Enter the name to add.", false); return; }
+  const lower = name.toLowerCase();
+  if ((allMembers || []).some(m => String(m.full_name || "").trim().toLowerCase() === lower)) {
+    sheetMsgSet("That name is already a registered member. Use their row in the list.", false);
+    return;
+  }
+  const guests = getGuests();
+  if (guests.some(g => String(g.name).toLowerCase() === lower)) {
+    sheetMsgSet("That name is already on the list.", false);
+    return;
+  }
+  guests.push({ id: "g_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name, createdAt: new Date().toISOString() });
+  setGuests(guests);
+  input.value = "";
+  renderContribSheet();
+  sheetMsgSet(`Added “${name}” to the contribution list.`, true);
+}
+
+function removeGuest(id) {
+  const g = getGuests().find(x => x.id === id);
+  if (!g) return;
+  if (getPayments().some(p => String(p.memberKey) === String(id) || String(p.memberId) === String(id))) {
+    alert("This name has payments recorded, so it cannot be removed.");
+    return;
+  }
+  if (!confirm(`Remove “${g.name}” from the contribution list?`)) return;
+  setGuests(getGuests().filter(x => x.id !== id));
+  renderContribSheet();
+  sheetMsgSet(`Removed “${g.name}”.`, true);
+}
+
 /* ---- Contribution sheet: members for one type + date ---- */
 
 let sheetRows = [];
@@ -2271,6 +2350,9 @@ function onSheetTypeChange() {
   const t = sheetTypeMeta();
   document.getElementById("sheetPeriodWrap").style.display = t.kind === "monthly" ? "block" : "none";
   document.getElementById("sheetRemoveType").style.display = String(t.id).startsWith("ct_") ? "inline-block" : "none";
+  const guestOk = t.kind === "custom";
+  document.getElementById("guestAddRow").style.display = guestOk ? "" : "none";
+  document.getElementById("guestHint").style.display = guestOk ? "" : "none";
   renderContribSheet();
 }
 
@@ -2291,7 +2373,7 @@ function sheetMembersFor(type, date, applySearch) {
   const recsDate = sheetRecords(type, date);
   const recsAll = sheetRecords(type, null);
   const q = applySearch ? (document.getElementById("sheetSearch").value || "").trim().toLowerCase() : "";
-  return approvedAlphabetical().filter(m => {
+  return sheetPeople(type).filter(m => {
     if (q && !String(m.full_name || "").toLowerCase().includes(q)) return false;
     if (show === "paid") return sheetMemberPaid(m, recsAll) > 0;
     if (show === "unpaid") return sheetMemberPaid(m, recsDate) === 0;
@@ -2306,7 +2388,7 @@ function updateSheetTotal() {
   const recsAll = sheetRecords(type, null);
   const total = recs.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const totalAll = recsAll.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-  const payers = approvedAlphabetical().filter(m => sheetMemberPaid(m, recs) > 0).length;
+  const payers = sheetPeople(type).filter(m => sheetMemberPaid(m, recs) > 0).length;
   document.getElementById("sheetTotalLabel").textContent = `Total ${type.name} for ${date}`;
   document.getElementById("sheetTotalValue").textContent = "₦" + total.toLocaleString();
   document.getElementById("sheetTotalSub").textContent =
@@ -2326,7 +2408,7 @@ function renderContribSheet() {
     const all = sheetMemberPaid(m, recsAll);
     return `<tr>
       <td>${i + 1}</td>
-      <td>${escapeHtml(m.full_name || "")}</td>
+      <td>${escapeHtml(m.full_name || "")}${m.isGuest ? ' <span class="status pending">Guest</span> <button type="button" class="actionBtn danger" style="padding:2px 8px;font-size:12px;" aria-label="Remove name" onclick="removeGuest(\'' + escapeHtml(String(m.id)) + '\')">✕</button>' : ""}</td>
       <td id="sheetPaid${i}" style="font-weight:600;">${paid > 0 ? paid.toLocaleString() : "—"}</td>
       <td id="sheetAll${i}">${all > 0 ? all.toLocaleString() : "—"}</td>
       <td style="white-space:nowrap;">
@@ -2371,6 +2453,7 @@ function sheetAdd(i) {
     beneficiaryName: "",
     purpose: "",
     note: "",
+    guest: !!m.isGuest,
     createdAt: new Date().toISOString()
   }]);
 
@@ -2391,7 +2474,7 @@ function sheetFullListData() {
   const recsDate = sheetRecords(type, date);
   const recsAll = sheetRecords(type, null);
   const rows = sheetMembersFor(type, date, false).map(m => ({
-    name: m.full_name || "",
+    name: (m.full_name || "") + (m.isGuest ? " (guest)" : ""),
     paid: sheetMemberPaid(m, recsDate),
     all: sheetMemberPaid(m, recsAll)
   }));
