@@ -399,6 +399,7 @@
               <option value="unpaid">Not yet paid on this date</option>
             </select>
           </label>
+          <button type="button" class="actionBtn secondary" id="sheetRenameType" style="display:none;" onclick="renameContribType()">Rename this type</button>
           <button type="button" class="actionBtn danger" id="sheetRemoveType" style="display:none;" onclick="removeContribType()">Remove this type</button>
         </div>
         <div class="toolbar" id="guestAddRow" style="display:none;">
@@ -1086,6 +1087,19 @@
     <div class="form-actions">
       <button type="button" class="actionBtn" id="memberAddSaveBtn" onclick="saveMemberAdd()">Add member</button>
       <button type="button" class="actionBtn secondary" onclick="closeMemberAdd()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="paymentEditOverlay">
+  <div class="modal-box" style="max-width:520px;">
+    <h2>Edit payment</h2>
+    <p class="hint">Changes are saved straight away and the totals update. The earlier values are kept on the record and it is marked as edited.</p>
+    <div id="peRows"></div>
+    <div id="peMsg" style="font-size:13px;margin:8px 0;min-height:16px;"></div>
+    <div class="form-actions">
+      <button type="button" class="actionBtn" onclick="savePaymentEdits()">Save changes</button>
+      <button type="button" class="actionBtn secondary" onclick="closePaymentEdit()">Cancel</button>
     </div>
   </div>
 </div>
@@ -1928,10 +1942,25 @@ async function syncPaymentsFromServer() {
   const remote = await adminStoreLoad("payments", null);
   if (!Array.isArray(remote)) return;
   const local = getPayments();
-  const have = new Set(local.map(p => p && p.id));
-  const extra = remote.filter(p => p && p.id && !have.has(p.id));
-  if (!extra.length) return;
-  localStorage.setItem(CONTRIB_PAY_KEY, JSON.stringify(local.concat(extra)));
+  const index = new Map();
+  local.forEach((p, i) => { if (p && p.id) index.set(p.id, i); });
+  let changed = false;
+  remote.forEach(r => {
+    if (!r || !r.id) return;
+    if (!index.has(r.id)) {
+      local.push(r);
+      changed = true;
+    } else {
+      const i = index.get(r.id);
+      // keep the more recently edited version, so edits made on another device arrive here
+      if (String(r.updatedAt || "") > String(local[i].updatedAt || "")) {
+        local[i] = r;
+        changed = true;
+      }
+    }
+  });
+  if (!changed) return;
+  localStorage.setItem(CONTRIB_PAY_KEY, JSON.stringify(local));
   if (document.getElementById("sheetBody")) {
     renderContribSheet();
     if (typeof renderContributionTotals === "function") renderContributionTotals();
@@ -2086,11 +2115,11 @@ function renderPayHistory() {
       <td>${escapeHtml(p.date || "")}</td>
       <td>${escapeHtml(p.memberName || "")}</td>
       <td>${escapeHtml(p.typeName || "")}</td>
-      <td>${Number(p.amount || 0).toLocaleString()}</td>
+      <td>${Number(p.amount || 0).toLocaleString()}${p.edits && p.edits.length ? ' <span class="status pending" title="This payment was edited">edited</span>' : ""}</td>
       <td>${escapeHtml(extra)}</td>
       <td class="wrap-cell">${escapeHtml(p.purpose || "")}</td>
       <td class="wrap-cell">${escapeHtml(p.note || "")}</td>
-      <td><button type="button" class="actionBtn danger" onclick="deletePayment('${escapeHtml(p.id)}')">Delete</button></td>
+      <td style="white-space:nowrap;">${p.kind === "custom" ? `<button type="button" class="actionBtn secondary" onclick="openPaymentEdit(['${escapeHtml(p.id)}'])">Edit</button> ` : ""}<button type="button" class="actionBtn danger" onclick="deletePayment('${escapeHtml(p.id)}')">Delete</button></td>
     </tr>`;
   }).join("");
 }
@@ -2235,6 +2264,83 @@ function removeContribType() {
   sheetMsgSet(`Removed “${t.name}”.`, true);
 }
 
+/* ---- Edit payments of created (other) contribution types ---- */
+
+let peIds = [];
+
+function openPaymentEdit(ids) {
+  const all = getPayments();
+  const rows = ids.map(id => all.find(p => p.id === id)).filter(p => p && p.kind === "custom");
+  if (!rows.length) return;
+  peIds = rows.map(p => p.id);
+  document.getElementById("peRows").innerHTML = rows.map(p => `
+    <div class="pe-row" data-id="${escapeHtml(p.id)}" style="border-bottom:1px solid #eee;padding:8px 0;">
+      <div style="font-weight:600;margin-bottom:6px;">${escapeHtml(p.memberName || "")} · ${escapeHtml(p.typeName || "")}</div>
+      <div class="form-row three">
+        <div><label>Amount (₦)</label><input type="number" class="pe-amt" min="0" step="0.01" value="${Number(p.amount) || 0}"></div>
+        <div><label>Date</label><input type="date" class="pe-date" value="${escapeHtml(p.date || "")}"></div>
+        <div><label>Note</label><input type="text" class="pe-note" value="${escapeHtml(p.note || "")}"></div>
+      </div>
+    </div>`).join("");
+  document.getElementById("peMsg").textContent = "";
+  document.getElementById("paymentEditOverlay").classList.add("open");
+}
+
+function closePaymentEdit() {
+  document.getElementById("paymentEditOverlay").classList.remove("open");
+}
+
+function savePaymentEdits() {
+  const msg = document.getElementById("peMsg");
+  msg.style.color = "#b00020";
+  const updates = [];
+  for (const row of document.querySelectorAll("#peRows .pe-row")) {
+    const amount = parseFloat(row.querySelector(".pe-amt").value);
+    const date = row.querySelector(".pe-date").value;
+    if (!(amount > 0)) { msg.textContent = "Every amount must be greater than zero."; return; }
+    if (!date) { msg.textContent = "Every payment needs a date."; return; }
+    updates.push({ id: row.dataset.id, amount, date, note: row.querySelector(".pe-note").value.trim() });
+  }
+  const now = new Date().toISOString();
+  const list = getPayments().map(p => {
+    const u = updates.find(x => x.id === p.id);
+    if (!u || p.kind !== "custom") return p;
+    if (u.amount === Number(p.amount) && u.date === p.date && u.note === (p.note || "")) return p;
+    const edits = (p.edits || []).concat([{ at: now, amount: p.amount, date: p.date, note: p.note || "" }]);
+    return Object.assign({}, p, { amount: u.amount, date: u.date, note: u.note, updatedAt: now, edits });
+  });
+  setPayments(list);
+  closePaymentEdit();
+  renderPayHistory();
+  renderPayDayTotal();
+  renderContributionTotals();
+  renderContribSheet();
+  sheetMsgSet("Payment updated.", true);
+}
+
+function renameContribType() {
+  const t = sheetTypeMeta();
+  if (!String(t.id).startsWith("ct_")) return;
+  const input = prompt("New name for this contribution type:", t.name);
+  if (input === null) return;
+  const name = input.trim().replace(/\s+/g, " ");
+  if (name.length < 2) { sheetMsgSet("Enter a name for the type.", false); return; }
+  if (name === t.name) return;
+  if (allContribTypes().some(x => x.id !== t.id && x.name.toLowerCase() === name.toLowerCase())) {
+    sheetMsgSet("A contribution type with that name already exists.", false);
+    return;
+  }
+  const now = new Date().toISOString();
+  setCustomTypes(getCustomTypes().map(x => x.id === t.id ? Object.assign({}, x, { name }) : x));
+  setPayments(getPayments().map(p => p.typeId === t.id ? Object.assign({}, p, { typeName: name, updatedAt: now }) : p));
+  fillSheetTypeSelect(t.id);
+  fillPayTypeOptions();
+  onSheetTypeChange();
+  renderPayHistory();
+  renderContributionTotals();
+  sheetMsgSet(`Renamed to “${name}”. Earlier payments now show the new name.`, true);
+}
+
 /* ---- Guest contributors: names on contribution lists who are not registered members ---- */
 
 const GUESTS_KEY = "adagbor_guest_contributors";
@@ -2331,11 +2437,29 @@ function sheetRecords(type, date) {
     (type.id !== "other" || p.typeName === type.name));
 }
 
+function sheetMemberRecords(m, recs) {
+  return recs.filter(p => String(p.memberKey) === memberKey(m) ||
+    (p.memberId != null && m.id != null && String(p.memberId) === String(m.id)));
+}
+
 function sheetMemberPaid(m, recs) {
-  return recs
-    .filter(p => String(p.memberKey) === memberKey(m) ||
-      (p.memberId != null && m.id != null && String(p.memberId) === String(m.id)))
-    .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  return sheetMemberRecords(m, recs).reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+}
+
+function sheetPaidCellHtml(paid, i, type) {
+  if (!(paid > 0)) return "—";
+  const edit = type && type.kind === "custom"
+    ? ` <button type="button" class="actionBtn secondary" style="padding:2px 8px;font-size:12px;" onclick="editSheetPayments(${i})">Edit</button>`
+    : "";
+  return paid.toLocaleString() + edit;
+}
+
+function editSheetPayments(i) {
+  const m = sheetRows[i];
+  if (!m) return;
+  const recs = sheetMemberRecords(m, sheetRecords(sheetTypeMeta(), sheetDateValue()));
+  if (!recs.length) return;
+  openPaymentEdit(recs.map(r => r.id));
 }
 
 function onSheetTypeChange() {
@@ -2350,6 +2474,7 @@ function onSheetTypeChange() {
   const t = sheetTypeMeta();
   document.getElementById("sheetPeriodWrap").style.display = t.kind === "monthly" ? "block" : "none";
   document.getElementById("sheetRemoveType").style.display = String(t.id).startsWith("ct_") ? "inline-block" : "none";
+  document.getElementById("sheetRenameType").style.display = String(t.id).startsWith("ct_") ? "inline-block" : "none";
   const guestOk = t.kind === "custom";
   document.getElementById("guestAddRow").style.display = guestOk ? "" : "none";
   document.getElementById("guestHint").style.display = guestOk ? "" : "none";
@@ -2409,7 +2534,7 @@ function renderContribSheet() {
     return `<tr>
       <td>${i + 1}</td>
       <td>${escapeHtml(m.full_name || "")}${m.isGuest ? ' <span class="status pending">Guest</span> <button type="button" class="actionBtn danger" style="padding:2px 8px;font-size:12px;" aria-label="Remove name" onclick="removeGuest(\'' + escapeHtml(String(m.id)) + '\')">✕</button>' : ""}</td>
-      <td id="sheetPaid${i}" style="font-weight:600;">${paid > 0 ? paid.toLocaleString() : "—"}</td>
+      <td id="sheetPaid${i}" style="font-weight:600;white-space:nowrap;">${sheetPaidCellHtml(paid, i, type)}</td>
       <td id="sheetAll${i}">${all > 0 ? all.toLocaleString() : "—"}</td>
       <td style="white-space:nowrap;">
         <input type="number" class="amt-input" id="sheetAmt${i}" min="0" step="0.01" placeholder="0.00"
@@ -2460,7 +2585,7 @@ function sheetAdd(i) {
   input.value = "";
   const paid = sheetMemberPaid(m, sheetRecords(type, date));
   const all = sheetMemberPaid(m, sheetRecords(type, null));
-  document.getElementById("sheetPaid" + i).textContent = paid > 0 ? paid.toLocaleString() : "—";
+  document.getElementById("sheetPaid" + i).innerHTML = sheetPaidCellHtml(paid, i, type);
   document.getElementById("sheetAll" + i).textContent = all > 0 ? all.toLocaleString() : "—";
   updateSheetTotal();
   sheetMsgSet(`Added ₦${amount.toLocaleString()} for ${m.full_name || "member"}.`, true);
